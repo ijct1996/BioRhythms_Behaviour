@@ -1,7 +1,7 @@
 %% ------------------------------------------------------------------------
 % Script: Wavelet Analysis of Mice Behaviour Data
 %         (Scalograms with Condition Groups)
-%
+
 % PURPOSE:
 % Reads an Excel file containing mice behavioural data. After selecting:
 %   - A time column (in hours; converted for plotting),
@@ -9,7 +9,7 @@
 %   - A number of condition groups (each with a user-specified name and
 %     the selection of activity columns corresponding to individuals in
 %     that condition),
-%
+
 % the script computes continuous wavelet transform scalograms for:
 %   (a) each individual (activity column) in the condition, and
 %   (b) the condition-specific average signal across those individuals.
@@ -19,7 +19,7 @@
 %
 % NOTE: Adjust conversion factors, filter parameters, or aesthetic
 %       settings as needed.
-%
+
 % CHANGELOG:
 % - 2025-11-09: Original version with sex detection based on "-M"/"-F"
 %               suffixes and sex-specific subfolders.
