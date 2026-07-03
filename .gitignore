@@ -1,0 +1,16 @@
+# Data and results (never commit raw behavioural data or outputs)
+Data/
+Figures/
+Output/
+*.mat
+
+# User-specific paths (machine-local output roots)
+user_paths.m
+
+# MATLAB autosave
+*.asv
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.tmp

@@ -1,51 +1,54 @@
-# Data Structure: {{PROJECT_NAME}}
+# Data Structure: BioRhythms Core v1
 
-> Document every dataset used in this project. **Do not commit raw identifiable patient data to Git.**
+> Raw data **not** in git. Pipeline_Input files are pre-split and ready — do not re-split unless sources change.
 
 ## Storage locations
 
-| Dataset | Path (local) | Git | Notes |
-|---------|--------------|-----|-------|
-| Raw | `Data/raw/` | No (gitignored) | |
-| Processed | `Data/processed/` | No | |
-| Metadata | `Data/metadata/` | No | |
+| Dataset | Path | Git |
+|---------|------|-----|
+| Pipeline_Input | `C:\Users\User\Dev\Cursor\Research\Chronobiology\Data\BioRhythms Behaviour Data\Pipeline_Input\` | No |
+| Manifest | `...\PIPELINE_INPUT_MANIFEST.csv` | No |
+| Kent originals | `C:\Users\User\OneDrive\Desktop\Files\Kent\04. Data\03. Behaviour_Mice\LB_Thesis_Data_LP\` | No |
+| Results | User-selected (see `user_paths.m`) | No |
 
-## Primary dataset: *(name)*
+## Cohorts (Core v1)
 
-**File**: `Data/raw/...`
-**Format**: CSV / MAT / XLSX
-**Rows**: samples or observations
-**Last updated**:
+| Folder | Files | Rows | Mice | Duration |
+|--------|-------|------|------|----------|
+| `C57/` | L12–L24 (7) | 721 | 25 | ~5 d |
+| `NR2B_LP/` | L12–L24 (7) | 721 | 15 | ~5 d |
+| `NR2B_LD_DD/` | L12_NR2B_LD, L0_NR2B_DD | 1441 | 36 | ~10 d |
 
-### Columns
+## Filename convention
 
-| # | Name | Type | Unit | Missing values | Acceptable range | Description |
-|---|------|------|------|----------------|------------------|-------------|
-| 1 | patient_id | string | — | none expected | — | Unique patient identifier (anonymised) |
-| 2 | sampling_time | datetime | — | | | Time of sample collection |
-| 3 | sex | categorical | — | | M, F | Biological sex |
-| 4 | age | numeric | years | | 18–100 | Age at sampling |
-| | | | | | | |
+```
+L{photoperiod}_{genotype}[_LP|_LD|_DD]_02JUL26.xlsx
+```
 
-### Group definitions
+Examples: `L12_C57_02JUL26.xlsx`, `L24_NR2B_LP_02JUL26.xlsx`, `L0_NR2B_DD_02JUL26.xlsx`
 
-| Group label | Definition | N (expected) |
-|-------------|------------|--------------|
-| Control | | |
-| Case | | |
+## Column layout (every file)
 
-### Coding notes
+| Order | Column | Type | Notes |
+|-------|--------|------|-------|
+| 1 | `Time (hr)` | numeric | Hours from start; 10 min steps |
+| 2…n−1 | Mouse IDs | numeric | One column per animal |
+| last | `Light duration (h)` | numeric | Constant per file (photoperiod label) |
 
-<!-- e.g. 999 = missing, -1 = below detection limit -->
+## Group definitions
 
-## Derived variables
+| Cohort | Groups | Assignment |
+|--------|--------|------------|
+| C57_LP | C57 (single pool) | Auto |
+| NR2B_LP | Male / Female if parseable | Column name suffix |
+| NR2B_LD_DD | Male / Female if parseable | Column name suffix |
 
-| Variable | Formula / derivation | Used in |
-|----------|---------------------|---------|
-| | | |
+Fallback: interactive group UI (`group_assignment_dialog`).
 
-## Data provenance
+## Re-split (only if sources change)
 
-- **Source**:
-- **Collection dates**:
-- **Exclusions applied before import**:
+Script: `split_pipeline_input.m` (in Data folder). Manifest: `PIPELINE_INPUT_MANIFEST.csv`.
+
+## Handoff outputs (Script 2 → 3)
+
+See `HANDOFF_SCHEMA.md`. No full CWT arrays in MAT files.
