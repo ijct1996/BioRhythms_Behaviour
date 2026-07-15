@@ -1,21 +1,20 @@
 function label = collaborator_group_label(grp)
-%COLLABORATOR_GROUP_LABEL Display name for sex/genotype group tags.
+%COLLABORATOR_GROUP_LABEL Human-readable label for legend / filenames.
 
-    g = lower(strtrim(char(grp)));
-    if is_collaborator_female_group(g)
+    meta = parse_collaborator_group(grp);
+    if strcmp(meta.sex, 'F') && strcmp(meta.genotype, 'Ctrl')
+        label = 'Female Control';
+    elseif strcmp(meta.sex, 'F') && strcmp(meta.genotype, 'KO')
+        label = 'Female KO';
+    elseif strcmp(meta.sex, 'M') && strcmp(meta.genotype, 'Ctrl')
+        label = 'Male Control';
+    elseif strcmp(meta.sex, 'M') && strcmp(meta.genotype, 'KO')
+        label = 'Male KO';
+    elseif strcmp(meta.sex, 'F')
         label = 'Female';
-    elseif is_collaborator_male_group(g)
+    elseif strcmp(meta.sex, 'M')
         label = 'Male';
     else
         label = char(grp);
     end
-end
-
-function tf = is_collaborator_female_group(g)
-    tf = any(strcmp(g, {'f', 'female', 'fem', 'females'})) || contains(g, 'female');
-end
-
-function tf = is_collaborator_male_group(g)
-    tf = any(strcmp(g, {'m', 'male', 'males'})) ...
-        || (contains(g, 'male') && ~contains(g, 'female'));
 end
