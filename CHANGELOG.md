@@ -1,5 +1,16 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Extended UR E0–E1
+
+### Added
+- Top-level `Extended/` tree with Kent A–G copies in `Legacy/Kent_AG/`
+- `setup_extended_paths.m`, `Config/extended_defaults.m`, `EXTENDED_CONTEXT.md`, `METHODS_EXTENDED.md`
+- Thin E1 wrappers `Analysis/run_extended_*.m` (A–G via `run()`)
+
+### Notes
+- Core Scripts 1–3 frozen; CarryForward ±15% SEL_P360; LL projected dark = L22 ZT22–24
+- Core Script 3 residual-CWT vs Extended C are parallel claims
+
 ## [Unreleased] — Core v1 build
 
 ### Added
@@ -12,6 +23,7 @@
 ### Changed
 - `paths.m` adds `Config/` and recursive `Functions/`; no default results directory
 - `README.md` points to Core v1 entry points
+- `setup_paths` fprintf notes optional `setup_extended_paths`
 
 ### Pending (core-v1.0 tag)
 - MATLAB checkpoints Phases 2–6

@@ -36,4 +36,5 @@ function paths = setup_paths()
     end
 
     fprintf('BioRhythms Core v1 paths configured.\n');
+    fprintf('  (Extended UR: run setup_extended_paths from Extended/ — Core paths unchanged.)\n');
 end

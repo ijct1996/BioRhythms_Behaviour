@@ -1,8 +1,8 @@
-# BioRhythms_Behaviour — Core v1
+# BioRhythms_Behaviour — Core v1 + Extended UR
 
-Mouse locomotor rhythms: harmonic subtraction (validation), RAW wavelet, across-photoperiod co-expression.
+Mouse locomotor rhythms: harmonic subtraction (validation), RAW wavelet, across-photoperiod co-expression. Extended UR (Kent A–G) is a parallel validated-Raw ridge pipeline under `Extended/`.
 
-## Quick start (MATLAB R2025b)
+## Quick start — Core v1 (MATLAB R2025b)
 
 ```matlab
 cd('C:\Users\User\Dev\Cursor\Research\Chronobiology\BioRhythms_Behaviour')
@@ -14,12 +14,30 @@ run_behav_wavelet          % Script 2
 run_across_photoperiod     % Script 3
 ```
 
+## Quick start — Extended UR (E1)
+
+```matlab
+cd('C:\Users\User\Dev\Cursor\Research\Chronobiology\BioRhythms_Behaviour\Extended')
+setup_extended_paths   % also pulls in Core setup_paths
+
+run_extended_hsub                 % A
+run_extended_wavelet_ridge        % B
+run_extended_period_gate          % C
+run_extended_ridge_resync         % D
+run_extended_across_photoperiod   % E
+run_extended_phase_events         % F
+run_extended_publication_profiles % G
+```
+
+See `Extended/README.md`. Core Scripts 1–3 are frozen; do not conflate Core Script 3 residual-CWT UR with Extended CarryForward (±15% SEL_P360).
+
 ## Docs
 
 | File | Purpose |
 |------|---------|
-| `PROJECT_CONTEXT.md` | Science + scope |
-| `METHODS.md` | Pipeline logic |
+| `PROJECT_CONTEXT.md` | Science + scope (Core + Extended) |
+| `METHODS.md` | Core pipeline logic |
+| `Extended/METHODS_EXTENDED.md` | Extended CarryForward / projected dark |
 | `DATA_STRUCTURE.md` | Pipeline_Input layout |
 | `HANDOFF_SCHEMA.md` | Script 2 → 3 contract |
 | `CURSOR_MATLAB_WORKFLOW.md` | Cursor + MATLAB loop |
@@ -30,4 +48,4 @@ run_across_photoperiod     % Script 3
 
 ## Legacy
 
-Pre–Core v1 scripts (`harmonic_subtraction_v6.m`, etc.) remain at repo root until Phase 7 regression passes — see `Legacy/README.md`.
+Pre–Core v1 scripts (`harmonic_subtraction_v6.m`, etc.) remain at repo root until Phase 7 regression passes — see `Legacy/README.md`. Kent A–G copies: `Extended/Legacy/Kent_AG/`.
