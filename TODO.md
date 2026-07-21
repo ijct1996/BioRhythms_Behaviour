@@ -9,9 +9,9 @@
 
 ## Phase 1 — Documentation freeze
 - [x] `PROJECT_CONTEXT.md`
-- [x] `DATA_STRUCTURE.md`
-- [x] `METHODS.md`
-- [x] `HANDOFF_SCHEMA.md`
+- [x] `Functions/io/DATA_STRUCTURE.md`
+- [x] `Analysis/METHODS.md`
+- [x] `Functions/handoff/HANDOFF_SCHEMA.md`
 - [x] `TODO.md` (this file)
 
 ## Phase 2 — Shared foundation
@@ -38,7 +38,7 @@
 - [ ] Pause OneDrive during batch
 
 ## Phase 7 — Legacy cleanup
-- [ ] Move v4–v6 scripts to `Legacy/`
+- [x] Move v4–v6 scripts to `Legacy/`
 - [x] `Legacy/README.md`
 - [x] Root `README.md` → three `run_*.m` entry points
 - [ ] `CHANGELOG.md` → core-v1.0

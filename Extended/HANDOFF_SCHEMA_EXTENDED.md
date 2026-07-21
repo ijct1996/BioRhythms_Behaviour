@@ -1,6 +1,6 @@
 # Handoff schema (Extended UR — Kent B → C → D–G)
 
-Extended handoff contract for the **validated-Raw ultradian** pipeline. Core handoff remains in root `HANDOFF_SCHEMA.md` (`CoreSummary__*.mat`). Do not conflate the two.
+Extended handoff contract for the **validated-Raw ultradian** pipeline. Core handoff remains in `Functions/handoff/HANDOFF_SCHEMA.md` (`CoreSummary__*.mat`). Do not conflate the two.
 
 ## Parallel claim vs Core Script 3
 

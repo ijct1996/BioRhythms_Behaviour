@@ -20,7 +20,7 @@ Error? → copy error from Command Window → paste in ChatGPT → repeat
 │ docs        │     │ see figures  │     │ to GitHub   │
 └─────────────┘     └──────────────┘     └─────────────┘
        ▲
-       │ reads PROJECT_CONTEXT.md, METHODS.md (no re-prompting)
+       │ reads PROJECT_CONTEXT.md, Analysis/METHODS.md (no re-prompting)
 ```
 
 **Cursor edits files directly** — you do not copy-paste code into chat for every change.
@@ -43,14 +43,14 @@ theme = plot_config('development');
 ### 3. Read context (you or Cursor)
 - `PROJECT_CONTEXT.md` — what this project is about
 - `TODO.md` — today's priority
-- `METHODS.md` — pipeline logic
+- `Analysis/METHODS.md` — pipeline logic
 
 ---
 
 ## How to ask Cursor for help (instead of copy-paste)
 
 ### Refactor or improve code
-> Read `PROJECT_CONTEXT.md` and `harmonic_subtraction_v6.m`. Refactor the harmonic gating section into a separate function without changing behaviour.
+> Read `PROJECT_CONTEXT.md` and `Legacy/harmonic_subtraction_v6.m`. Refactor the harmonic gating section into a separate function without changing behaviour.
 
 Cursor opens and edits the file **in place**. You run it in MATLAB.
 
@@ -58,17 +58,17 @@ Cursor opens and edits the file **in place**. You run it in MATLAB.
 **Old way:** copy entire error from Command Window → paste in ChatGPT.
 
 **New way:** paste the error in Cursor chat **and reference the file**:
-> `@harmonic_subtraction_v6.m` — I get this error when running line 240:  
+> `@Legacy/harmonic_subtraction_v6.m` — I get this error when running line 240:  
 > `Error using ...`  
 > Fix without changing the block-shuffle logic.
 
 Or select the relevant lines in the editor and use **Ctrl+L** (chat with selection).
 
 ### Add a feature
-> Read `METHODS.md`. Add export of the residual signal to `Output/` after harmonic subtraction. Use `PLOT_MODE = 'development'` for any new figures.
+> Read `Analysis/METHODS.md`. Add export of the residual signal to `Output/` after harmonic subtraction. Use `PLOT_MODE = 'development'` for any new figures.
 
 ### Review statistics
-> Review `PeriodComparison_v4.m` against `Shared/Research_Knowledge.md`. Flag any multiple-comparison issues.
+> Review `Legacy/PeriodComparison_v4.m` against `Shared/Research_Knowledge.md`. Flag any multiple-comparison issues.
 
 ---
 
@@ -110,10 +110,10 @@ export_figure(gcf, 'Figures/export/Fig2_scalogram.png', theme);  % Tol bright, T
 | File | Purpose |
 |------|---------|
 | `PROJECT_CONTEXT.md` | Scientific context — Cursor reads this first |
-| `METHODS.md` | Pipeline logic (not code) |
-| `DATA_STRUCTURE.md` | Excel columns, groups, units |
+| `Analysis/METHODS.md` | Pipeline logic (not code) |
+| `Functions/io/DATA_STRUCTURE.md` | Excel columns, groups, units |
 | `TODO.md` | Current priorities |
-| `HarmonicSubtraction_README.md` | Deep dive on harmonic subtraction |
+| `Functions/hsub/README.md` | Deep dive on harmonic subtraction |
 | `Shared/Research_Knowledge.md` | Lab-wide stats/plotting rules |
 
 You **do not** need to re-explain the project each session if these files are kept up to date.

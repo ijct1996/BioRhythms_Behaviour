@@ -31,6 +31,9 @@ function paths = setup_paths()
     addpath(projectRoot, '-begin');
     addpath(paths.analysis, '-begin');
     addpath(paths.config, '-begin');
+    if isfolder(paths.legacy)
+        addpath(paths.legacy, '-begin');
+    end
     if isfolder(paths.functions)
         addpath(genpath(paths.functions), '-begin');
     end

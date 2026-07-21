@@ -51,4 +51,4 @@ Script: `split_pipeline_input.m` (in Data folder). Manifest: `PIPELINE_INPUT_MAN
 
 ## Handoff outputs (Script 2 → 3)
 
-See `HANDOFF_SCHEMA.md`. No full CWT arrays in MAT files.
+See `Functions/handoff/HANDOFF_SCHEMA.md`. No full CWT arrays in MAT files.

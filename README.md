@@ -31,15 +31,29 @@ run_extended_publication_profiles % G
 
 See `Extended/README.md`. Core Scripts 1–3 are frozen; do not conflate Core Script 3 residual-CWT UR with Extended CarryForward (±15% SEL_P360).
 
+## Folder layout
+
+```
+BioRhythms_Behaviour/
+├── README.md, PROJECT_CONTEXT.md, CHANGELOG.md, TODO.md, …   ← project-level docs
+├── setup_paths.m, paths.m, user_paths.example.m              ← entry points
+├── Analysis/          run_*.m scripts + METHODS.md
+├── Config/            core_defaults, palettes
+├── Functions/         hsub/, wavelet/, handoff/, plot/, io/ (+ module README / schema)
+├── Legacy/            pre–Core v1 monolithic scripts
+└── Extended/          UR ridge pipeline (Scripts 4–8) + Extended docs
+```
+
 ## Docs
 
 | File | Purpose |
 |------|---------|
 | `PROJECT_CONTEXT.md` | Science + scope (Core + Extended) |
-| `METHODS.md` | Core pipeline logic |
+| `Analysis/METHODS.md` | Core pipeline logic |
 | `Extended/METHODS_EXTENDED.md` | Extended CarryForward / projected dark |
-| `DATA_STRUCTURE.md` | Pipeline_Input layout |
-| `HANDOFF_SCHEMA.md` | Script 2 → 3 contract |
+| `Functions/io/DATA_STRUCTURE.md` | Pipeline_Input layout |
+| `Functions/handoff/HANDOFF_SCHEMA.md` | Script 2 → 3 contract |
+| `Functions/hsub/README.md` | Harmonic subtraction deep dive |
 | `CURSOR_MATLAB_WORKFLOW.md` | Cursor + MATLAB loop |
 
 ## Data (ready)
@@ -48,4 +62,4 @@ See `Extended/README.md`. Core Scripts 1–3 are frozen; do not conflate Core Sc
 
 ## Legacy
 
-Pre–Core v1 scripts (`harmonic_subtraction_v6.m`, etc.) remain at repo root until Phase 7 regression passes — see `Legacy/README.md`. Kent A–G copies: `Extended/Legacy/Kent_AG/`.
+Pre–Core v1 scripts live in `Legacy/` until Phase 7 regression passes — see `Legacy/README.md`. Kent A–G copies: `Extended/Legacy/Kent_AG/`.

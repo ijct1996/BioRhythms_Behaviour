@@ -1,5 +1,13 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Repo layout cleanup
+
+### Changed
+- Legacy monolithic scripts moved to `Legacy/` (`harmonic_subtraction_v6.m`, wavelet v4/v5, `PeriodComparison_v4.m`, `Plot_v5.m`)
+- Core docs moved into module folders: `Analysis/METHODS.md`, `Functions/io/DATA_STRUCTURE.md`, `Functions/handoff/HANDOFF_SCHEMA.md`, `Functions/hsub/README.md`
+- Root retains project-level docs only (`README.md`, `PROJECT_CONTEXT.md`, `CHANGELOG.md`, `TODO.md`, `CURSOR_MATLAB_WORKFLOW.md`, `LabNotebook.md`)
+- `setup_paths()` adds `Legacy/` to the MATLAB path
+
 ## [Unreleased] — Extended UR E0–E1
 
 ### Added
@@ -27,8 +35,7 @@
 
 ### Pending (core-v1.0 tag)
 - MATLAB checkpoints Phases 2–6
-- Move legacy v4–v6 to `Legacy/`
 
 ## [Pre-Core] — Legacy monolithic scripts
 
-- `harmonic_subtraction_v6.m`, `behav_wavelet_scalogram_v5.m`, `behav_wavelet_powerspectrum_v4.m`, `PeriodComparison_v4.m`, `Plot_v5.m`
+- Scripts now in `Legacy/`: `harmonic_subtraction_v6.m`, `behav_wavelet_scalogram_v5.m`, `behav_wavelet_powerspectrum_v4.m`, `PeriodComparison_v4.m`, `Plot_v5.m`

@@ -1,6 +1,6 @@
 # Methods: Extended UR (Kent A–G)
 
-> Pipeline logic for Extended. Core methods remain in root `METHODS.md`. Core Scripts 1–3 are frozen.
+> Pipeline logic for Extended. Core methods remain in `Analysis/METHODS.md`. Core Scripts 1–3 are frozen.
 
 ## Overview
 

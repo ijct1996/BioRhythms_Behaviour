@@ -20,7 +20,7 @@ Mouse behavioural activity recorded at **10 min** sampling (0.167 h steps) over 
 | Scripts | 3 (`run_*`) | 7 wrappers → Kent A–G |
 | Confirmatory UR | Residual CWT (AnchorOK, ±5% harmonics) | CarryForward Raw UR (±15% SEL_P360) |
 
-**Parallel claims:** Core Script 3 residual-CWT UR and Extended C CarryForward are **not** interchangeable — see `METHODS.md` vs `Extended/METHODS_EXTENDED.md`.
+**Parallel claims:** Core Script 3 residual-CWT UR and Extended C CarryForward are **not** interchangeable — see `Analysis/METHODS.md` vs `Extended/METHODS_EXTENDED.md`.
 
 ## Hypotheses
 

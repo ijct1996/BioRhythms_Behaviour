@@ -112,7 +112,7 @@ function cfg = extended_defaults()
 
     %% Parallel claims (methods lock)
     cfg.parallelClaims.coreScript3 = ...
-        'Residual-CWT UR (AnchorOK, ±5% harmonic exclusion) — Core METHODS.md';
+        'Residual-CWT UR (AnchorOK, ±5% harmonic exclusion) — Analysis/METHODS.md';
     cfg.parallelClaims.extended = ...
         'CarryForward Raw ridge UR (±15% SEL_P360) — Extended METHODS_EXTENDED.md';
 end
