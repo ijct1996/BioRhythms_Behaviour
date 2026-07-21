@@ -106,8 +106,14 @@ function out = extended_script6_across_lme_run(extHandoffDir, cfg)
         if isfile(lmeXlsx), delete(lmeXlsx); end
         writetable(lmeResult.inferenceRaw, lmeXlsx, 'Sheet', 'LME_Inference_Raw');
         writetable(lmeResult.inferenceFdr, lmeXlsx, 'Sheet', 'LME_Inference_BH_FDR');
+        write_lme_fdr_subset_(lmeResult.inferenceFdr, lmeXlsx, "Delta", "ANOVA", 'LME_Anova_Delta_BH_FDR');
+        write_lme_fdr_subset_(lmeResult.inferenceFdr, lmeXlsx, "Power", "ANOVA", 'LME_Anova_Power_BH_FDR');
+        write_lme_fdr_subset_(lmeResult.inferenceFdr, lmeXlsx, "Delta", "Coefficients", 'LME_Coef_Delta_BH_FDR');
+        write_lme_fdr_subset_(lmeResult.inferenceFdr, lmeXlsx, "Power", "Coefficients", 'LME_Coef_Power_BH_FDR');
         fprintf('LME workbook: %s\n', lmeXlsx);
         log_line_(LOG, 'LME workbook: %s', lmeXlsx);
+        log_line_(LOG, 'LME inference rows: %d | BH-significant: %d', ...
+            height(lmeResult.inferenceFdr), sum(lmeResult.inferenceFdr.Significant_BH));
     else
         warning('extended_script6_across_lme_run:LmeSkipped', ...
             'No LME models converged. Summary tables were still written to %s', xlsxOut);
@@ -429,24 +435,10 @@ function Tinf = append_inference_(Tinf, T, fdrFamily, metricClass, bandName, res
     if isempty(T) || height(T) == 0
         return;
     end
+
     n = height(T);
-    term = strings(n, 1);
-    if ismember('Name', T.Properties.VariableNames)
-        term = string(T.Name);
-    elseif ismember('Term', T.Properties.VariableNames)
-        term = string(T.Term);
-    else
-        for i = 1:n
-            term(i) = "Row_" + string(i);
-        end
-    end
-    pRaw = nan(n, 1);
-    for nm = {'pValue', 'PValue', 'Prob_F', 'ProbF'}
-        if ismember(nm{1}, T.Properties.VariableNames)
-            pRaw = double(T.(nm{1}));
-            break;
-        end
-    end
+    term = get_lme_terms_(T);
+    pRaw = get_numeric_var_or_nan_(T, {'pValue', 'PValue', 'pVal', 'Prob_F', 'ProbF'});
     isIntercept = contains(lower(term), 'intercept');
     include = isfinite(pRaw) & ~isIntercept;
     if string(tableType) == "ANOVA"
@@ -463,6 +455,13 @@ function Tinf = append_inference_(Tinf, T, fdrFamily, metricClass, bandName, res
     block.Formula = repmat(string(formulaStr), n, 1);
     block.p_raw = pRaw(:);
     block.IncludeInFDR = include(:);
+    block.Estimate = get_numeric_var_or_nan_(T, {'Estimate'});
+    block.SE = get_numeric_var_or_nan_(T, {'SE'});
+    block.tStat = get_numeric_var_or_nan_(T, {'tStat'});
+    block.FStat = get_numeric_var_or_nan_(T, {'FStat'});
+    block.DF = get_numeric_var_or_nan_(T, {'DF'});
+    block.DF1 = get_numeric_var_or_nan_(T, {'DF1'});
+    block.DF2 = get_numeric_var_or_nan_(T, {'DF2'});
 
     if isempty(Tinf)
         Tinf = block;
@@ -471,12 +470,69 @@ function Tinf = append_inference_(Tinf, T, fdrFamily, metricClass, bandName, res
     end
 end
 
+function term = get_lme_terms_(T)
+    n = height(T);
+    term = strings(n, 1);
+    if ismember('Name', T.Properties.VariableNames)
+        term = string(T.Name);
+        return;
+    end
+    if ismember('Term', T.Properties.VariableNames)
+        term = string(T.Term);
+        return;
+    end
+    if ~isempty(T.Properties.RowNames) && numel(T.Properties.RowNames) == n
+        term = string(T.Properties.RowNames(:));
+        return;
+    end
+    for i = 1:n
+        term(i) = "Row_" + string(i);
+    end
+end
+
+function x = get_numeric_var_or_nan_(T, nameCandidates)
+    n = height(T);
+    x = nan(n, 1);
+    for k = 1:numel(nameCandidates)
+        nm = char(nameCandidates{k});
+        if ismember(nm, T.Properties.VariableNames)
+            v = T.(nm);
+            if iscell(v)
+                v = string(v);
+            end
+            x = double(v);
+            x = x(:);
+            if numel(x) ~= n
+                x = nan(n, 1);
+            end
+            return;
+        end
+    end
+end
+
+function write_lme_fdr_subset_(inferenceFdr, xlsxPath, metricClass, tableType, sheetName)
+    if isempty(inferenceFdr)
+        return;
+    end
+  subset = inferenceFdr(string(inferenceFdr.MetricClass) == string(metricClass) & ...
+        string(inferenceFdr.TableType) == string(tableType), :);
+    if isempty(subset)
+        writecell({'No rows.'}, xlsxPath, 'Sheet', sheetName);
+    else
+        writetable(subset, xlsxPath, 'Sheet', sheetName);
+    end
+end
+
 function Tout = apply_lme_bh_fdr_(Tin, alphaVal)
     Tout = Tin;
     n = height(Tout);
     Tout.p_BH = nan(n, 1);
     Tout.Significant_BH = false(n, 1);
+    Tout.FDR_Rank = nan(n, 1);
+    Tout.FDR_m = nan(n, 1);
+    Tout.FDR_Alpha = repmat(alphaVal, n, 1);
     fams = unique(string(Tout.FDRFamily));
+    fams = fams(~ismissing(fams));
     for f = 1:numel(fams)
         idxFam = string(Tout.FDRFamily) == fams(f) & Tout.IncludeInFDR & isfinite(Tout.p_raw);
         ii = find(idxFam);
@@ -486,12 +542,18 @@ function Tout = apply_lme_bh_fdr_(Tin, alphaVal)
         m = numel(ps);
         ranks = (1:m)';
         qs = ps .* m ./ ranks;
-        qs = flipud(cummin(flipud(qs)));
+        for i = m-1:-1:1
+            qs(i) = min(qs(i), qs(i + 1));
+        end
         qs(qs > 1) = 1;
         q = nan(m, 1);
         q(ord) = qs;
+        rankOut = nan(m, 1);
+        rankOut(ord) = ranks;
         Tout.p_BH(ii) = q;
         Tout.Significant_BH(ii) = q <= alphaVal;
+        Tout.FDR_Rank(ii) = rankOut;
+        Tout.FDR_m(ii) = m;
     end
 end
 
@@ -499,9 +561,19 @@ function T = coerce_lme_table_(T)
     if istable(T)
         return;
     end
+    % fitlme / anova return titleddataset in R2025b; table(T) collapses to a
+    % single unusable column. dataset2table preserves Name/Term and pValue.
     try
-        T = table(T);
+        T = dataset2table(T);
+        return;
     catch
-        T = table();
     end
+    try
+        if isa(T, 'dataset')
+            T = dataset2table(T);
+            return;
+        end
+    catch
+    end
+    T = table();
 end
