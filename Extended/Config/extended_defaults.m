@@ -94,6 +94,7 @@ function cfg = extended_defaults()
     cfg.stats.alphaFdr = 0.05;
     cfg.stats.nPerm = 10000;
     cfg.stats.minCandidatesForTest = 3;
+    cfg.stats.sexInteractionLME = true;   % Script 6: Photoperiod_h:Sex interaction pass
 
     %% Plot export — filled by extended_apply_plot_cfg
     cfg.plot.saveDpi = 96;

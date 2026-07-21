@@ -95,25 +95,53 @@ function out = extended_script6_across_lme_run(extHandoffDir, cfg)
     writetable(CarryForward, xlsxOut, 'Sheet', 'ValidationMap_Used');
 
     [Tpair, TpairSummary] = build_cr_ur_pairs_(BCS_used, CR_BAND, UR_BANDS, SRC_CR, SRC_UR);
+    Tpair = add_sex_column_(Tpair);
     Tabs = build_absolute_summary_(BCS_used, CR_BAND, UR_BANDS, SRC_CR, SRC_UR);
     writetable(Tpair, xlsxOut, 'Sheet', 'CR_UR_Pairs_PerMouse');
     writetable(TpairSummary, xlsxOut, 'Sheet', 'CR_UR_Pairs_Summary');
     writetable(Tabs, xlsxOut, 'Sheet', 'AbsolutePower_Summary');
 
-    lmeResult = run_lme_block_(BCS_used, Tpair, CR_BAND, UR_BANDS, SRC_CR, SRC_UR, cfg, LOG);
-    if lmeResult.success
+    sexResult = run_sex_descriptive_block_(BCS_used, Tpair, CR_BAND, UR_BANDS, SRC_CR, SRC_UR, LOG);
+    writetable(sexResult.assignment, xlsxOut, 'Sheet', 'Sex_Assignment');
+    writetable(sexResult.balance, xlsxOut, 'Sheet', 'Sex_Balance');
+    writetable(sexResult.pairSummaryBySex, xlsxOut, 'Sheet', 'CR_UR_Pairs_Summary_BySex');
+    writetable(sexResult.absSummaryBySex, xlsxOut, 'Sheet', 'AbsolutePower_Summary_BySex');
+    fprintf('Sex-labelled mice: %d | unknown sex dropped from sex tables: %d\n', ...
+        height(sexResult.assignment), sexResult.nUnknownSexRows);
+    log_line_(LOG, 'Sex assignment rows: %d | usable for sex pass: %s', ...
+        height(sexResult.assignment), string(sexResult.hasUsableSex));
+
+    lmeResult = run_lme_block_(BCS_used, Tpair, CR_BAND, UR_BANDS, SRC_CR, SRC_UR, cfg, LOG, "AdditiveOnly");
+    sexLmeResult = struct('success', false, 'inferenceRaw', table(), 'inferenceFdr', table(), 'nSuccess', 0);
+    if sexResult.hasUsableSex && isfield(cfg, 'stats') && isfield(cfg.stats, 'sexInteractionLME') ...
+            && cfg.stats.sexInteractionLME
+        sexLmeResult = run_lme_block_(BCS_used, Tpair, CR_BAND, UR_BANDS, SRC_CR, SRC_UR, cfg, LOG, "PhotoperiodBySex");
+        log_line_(LOG, 'Sex-interaction LME models: %d', sexLmeResult.nSuccess);
+    end
+
+    if lmeResult.success || sexLmeResult.success
         lmeXlsx = fullfile(dirs.Tables, 'AcrossPhotoperiod_LME_Outputs.xlsx');
         if isfile(lmeXlsx), delete(lmeXlsx); end
-        writetable(lmeResult.inferenceRaw, lmeXlsx, 'Sheet', 'LME_Inference_Raw');
-        writetable(lmeResult.inferenceFdr, lmeXlsx, 'Sheet', 'LME_Inference_BH_FDR');
+        inferenceRawAll = [lmeResult.inferenceRaw; sexLmeResult.inferenceRaw]; %#ok<AGROW>
+        inferenceFdrAll = table();
+        if ~isempty(lmeResult.inferenceFdr)
+            inferenceFdrAll = lmeResult.inferenceFdr;
+        end
+        if ~isempty(sexLmeResult.inferenceFdr)
+            inferenceFdrAll = [inferenceFdrAll; sexLmeResult.inferenceFdr]; %#ok<AGROW>
+        end
+        writetable(inferenceRawAll, lmeXlsx, 'Sheet', 'LME_Inference_Raw');
+        writetable(inferenceFdrAll, lmeXlsx, 'Sheet', 'LME_Inference_BH_FDR');
         write_lme_fdr_subset_(lmeResult.inferenceFdr, lmeXlsx, "Delta", "ANOVA", 'LME_Anova_Delta_BH_FDR');
         write_lme_fdr_subset_(lmeResult.inferenceFdr, lmeXlsx, "Power", "ANOVA", 'LME_Anova_Power_BH_FDR');
         write_lme_fdr_subset_(lmeResult.inferenceFdr, lmeXlsx, "Delta", "Coefficients", 'LME_Coef_Delta_BH_FDR');
         write_lme_fdr_subset_(lmeResult.inferenceFdr, lmeXlsx, "Power", "Coefficients", 'LME_Coef_Power_BH_FDR');
+        write_lme_fdr_family_subset_(sexLmeResult.inferenceFdr, lmeXlsx, "Delta_LME_SexInt", 'LME_SexInt_Delta_BH_FDR');
+        write_lme_fdr_family_subset_(sexLmeResult.inferenceFdr, lmeXlsx, "Power_LME_SexInt", 'LME_SexInt_Power_BH_FDR');
         fprintf('LME workbook: %s\n', lmeXlsx);
         log_line_(LOG, 'LME workbook: %s', lmeXlsx);
         log_line_(LOG, 'LME inference rows: %d | BH-significant: %d', ...
-            height(lmeResult.inferenceFdr), sum(lmeResult.inferenceFdr.Significant_BH));
+            height(inferenceFdrAll), sum(inferenceFdrAll.Significant_BH));
     else
         warning('extended_script6_across_lme_run:LmeSkipped', ...
             'No LME models converged. Summary tables were still written to %s', xlsxOut);
@@ -125,6 +153,8 @@ function out = extended_script6_across_lme_run(extHandoffDir, cfg)
     out.xlsxOut = xlsxOut;
     out.nBCS = height(BCS_used);
     out.lme = lmeResult;
+    out.sex = sexResult;
+    out.sexLme = sexLmeResult;
     out.logPath = logPath;
 
     fprintf('\nExtended Script 6 complete.\n');
@@ -235,13 +265,20 @@ function TBP = build_bandpower_table_(BCS, CR_BAND, UR_BANDS, SRC_CR, SRC_UR)
     TBP.Source = string(TBP.Source);
 end
 
-function result = run_lme_block_(BCS, Tpair, CR_BAND, UR_BANDS, SRC_CR, SRC_UR, cfg, LOG)
+function result = run_lme_block_(BCS, Tpair, CR_BAND, UR_BANDS, SRC_CR, SRC_UR, cfg, LOG, sexMode)
     result = struct('success', false, 'inferenceRaw', table(), 'inferenceFdr', table(), 'nSuccess', 0);
+    if nargin < 9 || isempty(sexMode)
+        sexMode = "AdditiveOnly";
+    end
     if ~isfield(cfg, 'stats')
         return;
     end
     alpha = cfg.stats.alphaFdr;
     bandsAll = string(cfg.bands.allNames);
+    sexMode = string(sexMode);
+    isSexInt = sexMode == "PhotoperiodBySex";
+    coefFamilyPrefix = ternary_(isSexInt, "SexInt", "");
+    anovaFamilyPrefix = coefFamilyPrefix;
 
     inferenceRaw = table();
     nSuccess = 0;
@@ -252,26 +289,33 @@ function result = run_lme_block_(BCS, Tpair, CR_BAND, UR_BANDS, SRC_CR, SRC_UR, 
     TpairL.File = categorical(string(TpairL.File));
     TpairL.Phase = categorical(string(TpairL.Phase));
     TpairL.UR_Band = categorical(string(TpairL.UR_Band));
-    TpairL = add_sex_column_(TpairL);
+    if ~ismember('Sex', TpairL.Properties.VariableNames)
+        TpairL = add_sex_column_(TpairL);
+    end
 
     for b = 1:numel(UR_BANDS)
         ub = UR_BANDS(b);
         D = TpairL(TpairL.UR_Band == categorical(ub), :);
         D = drop_unknown_sex_(D);
         if height(D) < 3
-            log_line_(LOG, 'Delta LME skipped %s: not enough rows', ub);
+            log_line_(LOG, '%s Delta LME skipped %s: not enough rows', sexMode, ub);
             continue;
         end
-        fml = build_lme_formula_('Delta_log10', numel(categories(D.Phase)) > 1, has_usable_sex_(D));
+        hasSex = has_usable_sex_(D);
+        if isSexInt && ~hasSex
+            log_line_(LOG, 'Sex-interaction Delta LME skipped %s: need both sexes', ub);
+            continue;
+        end
+        fml = build_lme_formula_('Delta_log10', numel(categories(D.Phase)) > 1, hasSex, sexMode);
         try
             mdl = fitlme(D, fml);
             inferenceRaw = append_inference_(inferenceRaw, mdl.Coefficients, ...
-                "Delta_LME_Coefficients", "Delta", ub, "Delta_log10", fml, "Coefficients");
+                build_lme_family_("Delta", "Coefficients", coefFamilyPrefix), "Delta", ub, "Delta_log10", fml, "Coefficients", sexMode);
             inferenceRaw = append_inference_(inferenceRaw, anova(mdl), ...
-                "Delta_LME_Anova", "Delta", ub, "Delta_log10", fml, "ANOVA");
+                build_lme_family_("Delta", "ANOVA", anovaFamilyPrefix), "Delta", ub, "Delta_log10", fml, "ANOVA", sexMode);
             nSuccess = nSuccess + 1;
         catch ME
-            log_line_(LOG, 'Delta LME failed %s: %s', ub, ME.message);
+            log_line_(LOG, '%s Delta LME failed %s: %s', sexMode, ub, ME.message);
         end
     end
 
@@ -288,19 +332,24 @@ function result = run_lme_block_(BCS, Tpair, CR_BAND, UR_BANDS, SRC_CR, SRC_UR, 
         D = TBP(TBP.BandName == categorical(bn), :);
         D = drop_unknown_sex_(D);
         if height(D) < 3
-            log_line_(LOG, 'Power LME skipped %s: not enough rows', bn);
+            log_line_(LOG, '%s Power LME skipped %s: not enough rows', sexMode, bn);
             continue;
         end
-        fml = build_lme_formula_('MeanBandPower_log10', numel(categories(D.Phase)) > 1, has_usable_sex_(D));
+        hasSex = has_usable_sex_(D);
+        if isSexInt && ~hasSex
+            log_line_(LOG, 'Sex-interaction Power LME skipped %s: need both sexes', bn);
+            continue;
+        end
+        fml = build_lme_formula_('MeanBandPower_log10', numel(categories(D.Phase)) > 1, hasSex, sexMode);
         try
             mdl = fitlme(D, fml);
             inferenceRaw = append_inference_(inferenceRaw, mdl.Coefficients, ...
-                "Power_LME_Coefficients", "Power", bn, "MeanBandPower_log10", fml, "Coefficients");
+                build_lme_family_("Power", "Coefficients", coefFamilyPrefix), "Power", bn, "MeanBandPower_log10", fml, "Coefficients", sexMode);
             inferenceRaw = append_inference_(inferenceRaw, anova(mdl), ...
-                "Power_LME_Anova", "Power", bn, "MeanBandPower_log10", fml, "ANOVA");
+                build_lme_family_("Power", "ANOVA", anovaFamilyPrefix), "Power", bn, "MeanBandPower_log10", fml, "ANOVA", sexMode);
             nSuccess = nSuccess + 1;
         catch ME
-            log_line_(LOG, 'Power LME failed %s: %s', bn, ME.message);
+            log_line_(LOG, '%s Power LME failed %s: %s', sexMode, bn, ME.message);
         end
     end
 
@@ -313,6 +362,124 @@ function result = run_lme_block_(BCS, Tpair, CR_BAND, UR_BANDS, SRC_CR, SRC_UR, 
     inferenceFdr = apply_lme_bh_fdr_(inferenceRaw, alpha);
     result.inferenceFdr = inferenceFdr;
     result.success = nSuccess > 0;
+end
+
+function result = run_sex_descriptive_block_(BCS, Tpair, CR_BAND, UR_BANDS, SRC_CR, SRC_UR, LOG)
+    result = struct('assignment', table(), 'balance', table(), ...
+        'pairSummaryBySex', table(), 'absSummaryBySex', table(), ...
+        'hasUsableSex', false, 'nUnknownSexRows', 0);
+
+    if ~ismember('Sex', Tpair.Properties.VariableNames)
+        Tpair = add_sex_column_(Tpair);
+    end
+    sxAll = string(Tpair.Sex);
+    result.nUnknownSexRows = sum(ismissing(sxAll) | sxAll == "Unknown");
+
+    ids = unique(string(Tpair.SignalID));
+    assignSex = strings(numel(ids), 1);
+    for i = 1:numel(ids)
+        rows = string(Tpair.SignalID) == ids(i);
+        u = unique(sxAll(rows));
+        u = u(~ismissing(u) & u ~= "Unknown");
+        if numel(u) == 1
+            assignSex(i) = u(1);
+        else
+            assignSex(i) = "Unknown";
+        end
+    end
+    result.assignment = table(ids, assignSex, 'VariableNames', {'SignalID', 'Sex'});
+    result.assignment = sortrows(result.assignment, {'Sex', 'SignalID'});
+
+    known = result.assignment(~ismissing(result.assignment.Sex) & result.assignment.Sex ~= "Unknown", :);
+    result.hasUsableSex = height(known) >= 2 && numel(unique(known.Sex)) >= 2;
+    if ~result.hasUsableSex
+        log_line_(LOG, 'Sex descriptive pass: insufficient labelled mice (nKnown=%d)', height(known));
+        result.balance = table();
+        result.pairSummaryBySex = table();
+        result.absSummaryBySex = table();
+        return;
+    end
+
+    Tknown = Tpair(~ismissing(sxAll) & sxAll ~= "Unknown", :);
+    result.balance = build_sex_balance_table_(Tknown);
+    result.pairSummaryBySex = build_cr_ur_pairs_summary_by_sex_(Tknown);
+    result.absSummaryBySex = build_absolute_summary_by_sex_(BCS, CR_BAND, UR_BANDS, SRC_CR, SRC_UR);
+    log_line_(LOG, 'Sex balance rows: %d | pair-by-sex rows: %d', ...
+        height(result.balance), height(result.pairSummaryBySex));
+end
+
+function Tbal = build_sex_balance_table_(Tpair)
+    T = Tpair(:, {'SignalID', 'Sex', 'Photoperiod_h', 'Phase', 'UR_Band'});
+    T.SignalID = string(T.SignalID);
+    T.Sex = string(T.Sex);
+    T.Phase = string(T.Phase);
+    T.UR_Band = string(T.UR_Band);
+    G = findgroups(T.Sex, T.Photoperiod_h, T.Phase, T.UR_Band);
+    sx = splitapply(@(x) x(1), T.Sex, G);
+    pp = splitapply(@(x) x(1), T.Photoperiod_h, G);
+    ph = splitapply(@(x) x(1), T.Phase, G);
+    ub = splitapply(@(x) x(1), T.UR_Band, G);
+    nMouse = splitapply(@(x) numel(unique(x)), T.SignalID, G);
+    nObs = splitapply(@numel, T.SignalID, G);
+    Tbal = table(sx, pp, ph, ub, nMouse, nObs, ...
+        'VariableNames', {'Sex', 'Photoperiod_h', 'Phase', 'UR_Band', 'N_Mice', 'N_Obs'});
+    Tbal = sortrows(Tbal, {'Sex', 'Phase', 'UR_Band', 'Photoperiod_h'});
+end
+
+function Tsum = build_cr_ur_pairs_summary_by_sex_(Tpair)
+    G = findgroups(Tpair.Photoperiod_h, Tpair.Phase, Tpair.UR_Band, Tpair.Sex);
+    meanCR = splitapply(@(x) mean(x, 'omitnan'), Tpair.CR_Log10, G);
+    sdCR = splitapply(@(x) std(x, 'omitnan'), Tpair.CR_Log10, G);
+    meanUR = splitapply(@(x) mean(x, 'omitnan'), Tpair.UR_Log10, G);
+    sdUR = splitapply(@(x) std(x, 'omitnan'), Tpair.UR_Log10, G);
+    meanD = splitapply(@(x) mean(x, 'omitnan'), Tpair.Delta_log10, G);
+    sdD = splitapply(@(x) std(x, 'omitnan'), Tpair.Delta_log10, G);
+    nMouse = splitapply(@(x) numel(unique(x)), string(Tpair.SignalID), G);
+    [pp, ph, ub, sx] = splitapply(@(a, b, c, d) deal(a(1), b(1), c(1), d(1)), ...
+        Tpair.Photoperiod_h, Tpair.Phase, Tpair.UR_Band, Tpair.Sex, G);
+    Tsum = table(pp, ph, ub, sx, nMouse, meanCR, sdCR, meanUR, sdUR, meanD, sdD, ...
+        'VariableNames', {'Photoperiod_h', 'Phase', 'UR_Band', 'Sex', 'N_Mice', ...
+        'Mean_CR_Log10', 'SD_CR_Log10', 'Mean_UR_Log10', 'SD_UR_Log10', ...
+        'Mean_Delta_log10', 'SD_Delta_log10'});
+    Tsum.Sex = string(Tsum.Sex);
+    Tsum = sortrows(Tsum, {'Sex', 'Phase', 'UR_Band', 'Photoperiod_h'});
+end
+
+function Tabs = build_absolute_summary_by_sex_(BCS, CR_BAND, UR_BANDS, SRC_CR, SRC_UR)
+    BCS = add_sex_column_(BCS);
+    sx = string(BCS.Sex);
+    BCS = BCS(~ismissing(sx) & sx ~= "Unknown", :);
+    bandsAll = [CR_BAND UR_BANDS];
+    rows = cell(0, 6);
+    for b = 1:numel(bandsAll)
+        bn = bandsAll(b);
+        if bn == CR_BAND
+            D = BCS(BCS.Source == SRC_CR & BCS.BandName == bn, :);
+        else
+            D = BCS(BCS.Source == SRC_UR & BCS.BandName == bn, :);
+        end
+        if isempty(D), continue; end
+        G = findgroups(D.Photoperiod_h, D.Phase, D.Sex);
+        pp = splitapply(@(x) x(1), D.Photoperiod_h, G);
+        ph = splitapply(@(x) x(1), D.Phase, G);
+        sxG = splitapply(@(x) x(1), string(D.Sex), G);
+        m = splitapply(@(x) mean(x, 'omitnan'), D.MeanBandPower_log10, G);
+        s = splitapply(@(x) std(x, 'omitnan'), D.MeanBandPower_log10, G);
+        n = numel(m);
+        add = [num2cell(pp(:)) cellstr(ph(:)) cellstr(repmat(string(bn), n, 1)) ...
+            cellstr(sxG(:)) num2cell(m(:)) num2cell(s(:))];
+        rows = [rows; add]; %#ok<AGROW>
+    end
+    if isempty(rows)
+        Tabs = table();
+        return;
+    end
+    Tabs = cell2table(rows, 'VariableNames', ...
+        {'Photoperiod_h', 'Phase', 'BandName', 'Sex', 'Mean_Log10', 'SD_Log10'});
+    Tabs.Phase = string(Tabs.Phase);
+    Tabs.BandName = string(Tabs.BandName);
+    Tabs.Sex = string(Tabs.Sex);
+    Tabs = sortrows(Tabs, {'Sex', 'Phase', 'BandName', 'Photoperiod_h'});
 end
 
 function T = annotate_bcs_with_validation_(T, CarryForward, UR_BANDS, SRC_UR, applyAllPhase)
@@ -407,15 +574,46 @@ function tf = has_usable_sex_(T)
     tf = numel(unique(sx)) >= 2;
 end
 
-function fml = build_lme_formula_(responseName, hasPhase, hasSex)
+function fml = build_lme_formula_(responseName, hasPhase, hasSex, sexMode)
+    if nargin < 4 || isempty(sexMode)
+        sexMode = "AdditiveOnly";
+    end
     terms = "Photoperiod_h";
     if hasPhase
         terms = terms + " + Phase";
     end
     if hasSex
-        terms = terms + " + Sex";
+        if string(sexMode) == "PhotoperiodBySex"
+            terms = terms + " + Photoperiod_h:Sex + Sex";
+        else
+            terms = terms + " + Sex";
+        end
     end
     fml = char(string(responseName) + " ~ " + terms + " + (1|SignalID) + (1|File)");
+end
+
+function fam = build_lme_family_(metricClass, tableType, prefix)
+    if nargin < 3 || strlength(string(prefix)) == 0
+        if string(tableType) == "ANOVA"
+            fam = string(metricClass) + "_LME_Anova";
+        else
+            fam = string(metricClass) + "_LME_Coefficients";
+        end
+        return;
+    end
+    if string(tableType) == "ANOVA"
+        fam = string(metricClass) + "_LME_" + string(prefix) + "_Anova";
+    else
+        fam = string(metricClass) + "_LME_" + string(prefix) + "_Coefficients";
+    end
+end
+
+function y = ternary_(tf, a, b)
+    if tf
+        y = a;
+    else
+        y = b;
+    end
 end
 
 function sx = infer_sex_from_signalid_(signalID)
@@ -430,7 +628,10 @@ function sx = infer_sex_from_signalid_(signalID)
     sx(isFemale) = "Female";
 end
 
-function Tinf = append_inference_(Tinf, T, fdrFamily, metricClass, bandName, responseName, formulaStr, tableType)
+function Tinf = append_inference_(Tinf, T, fdrFamily, metricClass, bandName, responseName, formulaStr, tableType, sexMode)
+    if nargin < 9
+        sexMode = "AdditiveOnly";
+    end
     T = coerce_lme_table_(T);
     if isempty(T) || height(T) == 0
         return;
@@ -444,6 +645,14 @@ function Tinf = append_inference_(Tinf, T, fdrFamily, metricClass, bandName, res
     if string(tableType) == "ANOVA"
         include = isfinite(pRaw);
     end
+    if string(sexMode) == "PhotoperiodBySex" && string(tableType) == "Coefficients"
+        isSexTerm = contains(lower(term), "sex") | contains(term, ":");
+        include = include & isSexTerm;
+    end
+    if string(sexMode) == "PhotoperiodBySex" && string(tableType) == "ANOVA"
+        isSexTerm = contains(lower(term), "sex") | contains(term, ":");
+        include = include & isSexTerm;
+    end
 
     block = table();
     block.FDRFamily = repmat(string(fdrFamily), n, 1);
@@ -451,6 +660,7 @@ function Tinf = append_inference_(Tinf, T, fdrFamily, metricClass, bandName, res
     block.BandName = repmat(string(bandName), n, 1);
     block.Response = repmat(string(responseName), n, 1);
     block.TableType = repmat(string(tableType), n, 1);
+    block.SexModel = repmat(string(sexMode), n, 1);
     block.Term = term(:);
     block.Formula = repmat(string(formulaStr), n, 1);
     block.p_raw = pRaw(:);
@@ -507,6 +717,20 @@ function x = get_numeric_var_or_nan_(T, nameCandidates)
             end
             return;
         end
+    end
+end
+
+function write_lme_fdr_family_subset_(inferenceFdr, xlsxPath, familyPrefix, sheetName)
+    if isempty(inferenceFdr)
+        writecell({'No rows.'}, xlsxPath, 'Sheet', sheetName);
+        return;
+    end
+    fams = string(inferenceFdr.FDRFamily);
+    subset = inferenceFdr(startsWith(fams, string(familyPrefix)), :);
+    if isempty(subset)
+        writecell({'No rows.'}, xlsxPath, 'Sheet', sheetName);
+    else
+        writetable(subset, xlsxPath, 'Sheet', sheetName);
     end
 end
 
