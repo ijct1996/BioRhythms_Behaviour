@@ -8,7 +8,7 @@ function cfg = extended_defaults()
 
     cfg.version = '1.0-dev';
     cfg.matlabTarget = 'R2025b';
-    cfg.phase = 'Scripts4-7';
+    cfg.phase = 'Scripts4-8';
 
     %% Plot mode — development until user requests publication pass
     cfg.plotMode = 'development';
@@ -30,6 +30,8 @@ function cfg = extended_defaults()
     cfg.scripts(6).entry = 'run_extended_script6_across_lme';
     cfg.scripts(7).name = 'Phase events + publication profiles (dev tables/figs)';
     cfg.scripts(7).entry = 'run_extended_script7_phase_profiles';
+    cfg.scripts(8).name = 'Publication figure composites (Scripts 1-7 inputs)';
+    cfg.scripts(8).entry = 'run_extended_script8_publication_figures';
 
     %% HSub / CarryForward (Script 4 gate)
     cfg.hsub.defaultResidual = 'SEL_P360';
@@ -61,6 +63,12 @@ function cfg = extended_defaults()
     cfg.bands.primaryUR = ["UR_1_3", "UR_3_6"];
     cfg.bands.harmonicSensitive = ["UR_12_18"];
     cfg.bands.allNames = ["CR_20_28", cfg.bands.UR_names];
+
+    cfg.script8 = struct();
+    cfg.script8.primaryUR = cfg.bands.primaryUR;
+    cfg.script8.coherenceFacets = [12, 22, 24];
+    cfg.script8.exportStoryboard = true;
+    cfg.script8.exportVector = true;
 
     %% Ridge handoff QC (Script 4)
     cfg.ridgeHandoff.minRidgeCoverage = 0.50;
