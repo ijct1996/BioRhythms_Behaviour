@@ -22,7 +22,7 @@ run_extended_script4_ridge_validation   % pick Core Handoff/ folder
 % 5 — transition resync, FDR, LL projected, photoperiod gradient
 run_extended_script5_transition_resync  % pick ExtendedHandoff/AcrossPhotoperiod_Input/
 
-% 6 — across-photoperiod LME / FDR (Kent E legacy; tables primary in dev)
+% 6 — across-photoperiod LME / FDR (local Extended; tables primary in dev)
 run_extended_script6_across_lme
 
 % 7 — phase events + profiles (Kent F+G; skipped in dev unless legacy figs enabled)
@@ -46,7 +46,7 @@ run_extended_script7_phase_profiles(extIn)
 |----------|---------------|-------|-------------|
 | **4** | B ridge + C | Core `Handoff/` | `ExtendedHandoff/AcrossPhotoperiod_Input/WP_*`, `HSubSupported_PeriodMap.mat` |
 | **5** | D + D.5 | Script 4 handoff | `Ultradian_RidgePhase_Resync/`, `TransitionEffect_vs_Photoperiod/` |
-| **6** | E | Script 4 handoff | LME/FDR workbooks (legacy Kent E) |
+| **6** | E | Script 4 handoff | LME/FDR workbooks (`AcrossPhotoperiod_LME/`) |
 | **7** | F + G | Script 4 handoff | Phase events + profiles (legacy; off in dev by default) |
 
 ## What Core already covers (do not rerun)

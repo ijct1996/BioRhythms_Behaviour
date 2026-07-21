@@ -6,7 +6,7 @@
 %   resync = extended_ridge_resync_run()
 %   resync = extended_ridge_resync_run(handoffDir)
 %   resync = extended_ridge_resync_run(handoffDir, cfg)
-%   resync = extended_ridge_resync_run(opts)   % opts.handoffDir / opts.mapPath / opts.cfg
+%   resync = extended_ridge_resync_run(opts)   % opts.handoffDir / opts.mapPath / opts.cfg / opts.outputSubdir
 %
 %   handoffDirOrParent
 %     AcrossPhotoperiod_Input folder containing WP_TS__*.mat, OR a parent
@@ -28,12 +28,16 @@
 
     % Allow single-struct options: extended_ridge_resync_run(opts)
     mapPathArg = '';
-    if isstruct(handoffDirOrParent) && (isfield(handoffDirOrParent, 'handoffDir') || isfield(handoffDirOrParent, 'mapPath') || isfield(handoffDirOrParent, 'cfg'))
+    outputSubdirArg = '';
+    handoffDirExplicit = false;
+    if isstruct(handoffDirOrParent) && (isfield(handoffDirOrParent, 'handoffDir') || isfield(handoffDirOrParent, 'mapPath') || isfield(handoffDirOrParent, 'cfg') || isfield(handoffDirOrParent, 'outputSubdir'))
         optsIn = handoffDirOrParent;
         if isfield(optsIn, 'cfg') && ~isempty(optsIn.cfg), cfg = optsIn.cfg; end
         if isfield(optsIn, 'mapPath'), mapPathArg = char(string(optsIn.mapPath)); end
-        if isfield(optsIn, 'handoffDir')
+        if isfield(optsIn, 'outputSubdir'), outputSubdirArg = char(string(optsIn.outputSubdir)); end
+        if isfield(optsIn, 'handoffDir') && ~isempty(optsIn.handoffDir)
             handoffDirOrParent = optsIn.handoffDir;
+            handoffDirExplicit = true;
         else
             handoffDirOrParent = '';
         end
@@ -132,12 +136,11 @@
     if strlength(string(mapPathArg)) > 0 && isfile(mapPathArg)
         mapPath = char(mapPathArg);
         mapDir = fileparts(mapPath);
-        mapFile = char(string(java.io.File(mapPath).getName())); %#ok<NASGU>
     else
         fprintf('Select HSubSupported_PeriodMap.mat from the Raw-vs-HSub validation step.\n');
-        [mapFile, mapDir] = uigetfile({'HSubSupported_PeriodMap.mat','HSubSupported_PeriodMap.mat'; '*.mat','MAT files (*.mat)'}, ...
+        [mapFile, mapDir] = uigetfile({'*.mat', 'MAT files (*.mat)'}, ...
             'Select HSubSupported_PeriodMap.mat');
-        if isequal(mapFile,0)
+        if isequal(mapFile, 0)
             fprintf('No validation map selected. Exiting.\n');
             resync = struct();
             return;
@@ -181,7 +184,14 @@
             inferredHandoffDir = '';
         end
 
-        if strlength(string(inferredHandoffDir)) > 0
+        if handoffDirExplicit
+            if strlength(string(inferredHandoffDir)) > 0
+                handoffDir = inferredHandoffDir;
+            else
+                error('extended_ridge_resync_run:HandoffNotFound', ...
+                    'Provided handoffDir has no WP_TS__*.mat and could not infer one from map location: %s', mapPath);
+            end
+        elseif strlength(string(inferredHandoffDir)) > 0
             useInferred = questdlg(sprintf('Use inferred AcrossPhotoperiod_Input folder?\n\n%s', inferredHandoffDir), ...
                 'Use inferred handoff folder?', 'Yes', 'Choose another', 'Yes');
             if strcmpi(useInferred, 'Yes')
@@ -194,7 +204,7 @@
         end
     end
 
-    if isequal(handoffDir,0) || isempty(handoffDir)
+    if isequal(handoffDir, 0) || isempty(handoffDir)
         fprintf('No handoff folder selected. Exiting.\n');
         resync = struct();
         return;
@@ -207,6 +217,9 @@
     end
 
     outRoot = fullfile(handoffDir, 'Ultradian_RidgePhase_Resync');
+    if strlength(string(outputSubdirArg)) > 0
+        outRoot = fullfile(outRoot, outputSubdirArg);
+    end
     figDir  = fullfile(outRoot, 'Figures');
     logDir  = fullfile(outRoot, 'Logs');
     ensure_dir(outRoot); ensure_dir(figDir); ensure_dir(logDir);
@@ -583,6 +596,8 @@ fprintf('Output folder:\n  %s\n', outRoot);
     resync.outRoot = outRoot;
     resync.outXLSX = outXLSX;
     resync.outMAT = outMAT;
+    resync.handoffDir = handoffDir;
+    resync.mapPath = mapPath;
 end
 
 function E = projected_ll_event_definitions(refPhotoperiodH)
