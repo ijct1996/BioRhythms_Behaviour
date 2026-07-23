@@ -9,8 +9,7 @@ function out = extended_script8_publication_figures_run(cohortRoot, cfg)
 %     Fig04 UR 1–3 transitions (A coherence, B amplitude, C DeltaR)
 %     Fig05 UR 3–6 transitions (same layout as Fig04)
 %     Fig06 Clusters + UR 1–3 primary-cluster 24h activity L12–L22
-%   Supplementary: cluster identity cards (UR 1–3 + UR 3–6 primary clusters),
-%     sex-stratified delta, non-primary activity grids, legacy coherence/ridge, coexpression
+%   Supplementary figures: use Script 9 (run_extended_script9_supplementary_figures)
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -90,9 +89,11 @@ function out = extended_script8_publication_figures_run(cohortRoot, cfg)
     script8_export_tall_copy_(tall6, wide6, outDirs.compositeTall);
     script8_log_(LOG, 'Fig 06 complete');
 
-    %% Supplementary
-    [manifest, ~] = script8_build_supplementary_(data, paths, outDirs, theme, manifest);
-    script8_log_(LOG, 'Supplementary complete');
+    %% Supplementary → Script 9
+    fprintf(['\nNote: Supplementary figures are produced by Script 9.\n' ...
+        '  Run:  run_extended_script9_supplementary_figures\n' ...
+        '  Out:  ...\\Script9_SupplementaryFigures_{Publication|Development}\\Figures\\\n']);
+    script8_log_(LOG, 'Supplementary deferred to Script 9');
 
     script8_write_manifest_(manifest, outDirs.manifest);
     script8_save_storyboard_(compositeWide, outDirs.storyboard);
@@ -165,7 +166,7 @@ function [manifest, widePath, standPaths] = script8_build_fig01a_(paths, outDirs
         'Extended validation: Raw UR ridge candidates carried forward only when period-matched to HSub residual (+/-15% SEL_P360).', ...
         'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 11, ...
         'FontWeight', 'bold', 'Interpreter', 'none');
-    title(ax, 'Analysis overview', 'FontName', theme.fontName, 'FontWeight', 'bold');
+    title(ax, 'Analysis overview', 'FontName', theme.fontName, 'FontWeight', 'bold', 'Interpreter', 'none');
 
     base = fullfile(outDirs.standalone, 'Fig01a_MethodsOverview');
     standPaths = script8_export_figure_(fig, base, theme, {theme.ext, '.pdf'});
@@ -189,18 +190,18 @@ function [manifest, widePath, standPaths] = script8_build_fig01b_(paths, outDirs
     yBranch = 0.28;
 
     boxes = {
-        0.9,  yMain, 'Wavelet\nscalogram';
-        3.0,  yMain, 'HSub residual\n(SEL\_P360)';
-        5.4,  yMain, 'CarryForward\ngate';
-        7.8,  yMain, 'CR–UR\nco-expression';
-        10.2, yMain, 'Transition\nphase coherence';
+        0.9,  yMain, sprintf('Wavelet\nscalogram');
+        3.0,  yMain, sprintf('HSub residual\n(SEL_P360)');
+        5.4,  yMain, sprintf('CarryForward\ngate');
+        7.8,  yMain, sprintf('CR–UR\nco-expression');
+        10.2, yMain, sprintf('Transition\nphase coherence');
         };
     for i = 1:size(boxes, 1)
         x = boxes{i, 1}; y = boxes{i, 2}; txt = boxes{i, 3};
         rectangle(ax, 'Position', [x - w/2, y - h/2, w, h], 'Curvature', 0.08, ...
             'FaceColor', [1 1 1], 'EdgeColor', pal.base(1, :), 'LineWidth', 1.6);
         text(ax, x, y, txt, 'HorizontalAlignment', 'center', 'FontName', theme.fontName, ...
-            'FontWeight', 'bold', 'FontSize', 11, 'Interpreter', 'tex');
+            'FontWeight', 'bold', 'FontSize', 11, 'Interpreter', 'none');
         if i < size(boxes, 1)
             script8_axes_arrow_(ax, x + w/2 + 0.05, y, boxes{i+1, 1} - w/2 - 0.05, boxes{i+1, 2}, pal.base(1, :));
         end
@@ -208,16 +209,16 @@ function [manifest, widePath, standPaths] = script8_build_fig01b_(paths, outDirs
 
     % Branch: transition metrics + clustering
     branchBoxes = {
-        10.2, yBranch, '\DeltaR + ridge\nat transition';
-        7.8,  yBranch, 'Validated UR\nclusters';
-        5.4,  yBranch, '24h activity\ncomponents';
+        10.2, yBranch, sprintf('DeltaR + ridge\nat transition');
+        7.8,  yBranch, sprintf('Validated UR\nclusters');
+        5.4,  yBranch, sprintf('24h activity\ncomponents');
         };
     for i = 1:size(branchBoxes, 1)
         x = branchBoxes{i, 1}; y = branchBoxes{i, 2}; txt = branchBoxes{i, 3};
         rectangle(ax, 'Position', [x - w/2, y - h/2, w, h], 'Curvature', 0.08, ...
             'FaceColor', [1 1 1], 'EdgeColor', pal.base(3, :), 'LineWidth', 1.4);
         text(ax, x, y, txt, 'HorizontalAlignment', 'center', 'FontName', theme.fontName, ...
-            'FontWeight', 'bold', 'FontSize', 10, 'Interpreter', 'tex');
+            'FontWeight', 'bold', 'FontSize', 10, 'Interpreter', 'none');
         if i < size(branchBoxes, 1)
             script8_axes_arrow_(ax, x - w/2 - 0.05, y, branchBoxes{i+1, 1} + w/2 + 0.05, branchBoxes{i+1, 2}, pal.base(3, :));
         end
@@ -225,23 +226,23 @@ function [manifest, widePath, standPaths] = script8_build_fig01b_(paths, outDirs
     script8_axes_arrow_(ax, 10.2, yMain - h/2 - 0.02, 10.2, yBranch + h/2 + 0.02, pal.base(3, :));
 
     % Wavelet → HSub link (Script 2 → Script 1)
-    text(ax, 1.95, yMain + 0.14, 'Scripts 2 \rightarrow 1', 'HorizontalAlignment', 'center', ...
-        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35], 'Interpreter', 'tex');
+    text(ax, 1.95, yMain + 0.14, 'Scripts 2 → 1', 'HorizontalAlignment', 'center', ...
+        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35], 'Interpreter', 'none');
     text(ax, 4.2, yMain + 0.14, 'Script 4', 'HorizontalAlignment', 'center', ...
-        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35]);
+        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35], 'Interpreter', 'none');
     text(ax, 6.6, yMain + 0.14, 'Scripts 3/6', 'HorizontalAlignment', 'center', ...
-        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35]);
+        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35], 'Interpreter', 'none');
     text(ax, 9.0, yMain + 0.14, 'Script 5', 'HorizontalAlignment', 'center', ...
-        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35]);
+        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35], 'Interpreter', 'none');
     text(ax, 6.6, yBranch - 0.18, 'Script 7', 'HorizontalAlignment', 'center', ...
-        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35]);
+        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35], 'Interpreter', 'none');
 
     text(ax, 6, 0.06, ...
-        ['CarryForward: Raw UR ridge candidates retained only when period-matched to HSub residual ' ...
-        '(\pm15% SEL\_P360).'], ...
+        sprintf(['CarryForward: Raw UR ridge candidates retained only when period-matched to HSub residual ' ...
+        '(±15%% SEL_P360).']), ...
         'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 10, ...
-        'FontWeight', 'bold', 'Interpreter', 'tex');
-    title(ax, 'Detailed validation pipeline', 'FontName', theme.fontName, 'FontWeight', 'bold');
+        'FontWeight', 'bold', 'Interpreter', 'none');
+    title(ax, 'Detailed validation pipeline', 'FontName', theme.fontName, 'FontWeight', 'bold', 'Interpreter', 'none');
 
     base = fullfile(outDirs.standalone, 'Fig01b_MethodsDetailed');
     standPaths = script8_export_figure_(fig, base, theme, {theme.ext, '.pdf'});
@@ -336,7 +337,7 @@ function [widePath, tallPath] = script8_composite_fig02_(standPaths, outDirs, th
     nexttile(tl, 4); imshow(imgs{4}); axis off;
     nexttile(tl, 5, [1 2]); imshow(imgs{5}); axis off;
     widePath = fullfile(outDirs.compositeWide, ['Fig02_Scalograms_Retention' theme.ext]);
-    exportgraphics(figW, widePath, 'Resolution', theme.dpi);
+    script8_exportgraphics_(figW, widePath, theme.dpi);
     close(figW);
 
     figT = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1000 1400]);
@@ -347,7 +348,7 @@ function [widePath, tallPath] = script8_composite_fig02_(standPaths, outDirs, th
     nexttile(tl2, 4); imshow(imgs{4}); axis off;
     nexttile(tl2, 5, [1 2]); imshow(imgs{5}); axis off;
     tallPath = fullfile(outDirs.compositeTall, ['Fig02_Scalograms_Retention' theme.ext]);
-    exportgraphics(figT, tallPath, 'Resolution', theme.dpi);
+    script8_exportgraphics_(figT, tallPath, theme.dpi);
     close(figT);
 end
 
@@ -496,7 +497,7 @@ function [widePath, tallPath] = script8_composite_fig03_(standPaths, outDirs, th
     nexttile(tl, 2); imshow(imgs{2}); axis off;
     nexttile(tl, 3, [1 2]); imshow(imgs{3}); axis off;
     widePath = fullfile(outDirs.compositeWide, ['Fig03_Gradient_CRUR' theme.ext]);
-    exportgraphics(figW, widePath, 'Resolution', theme.dpi);
+    script8_exportgraphics_(figW, widePath, theme.dpi);
     close(figW);
 
     figT = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1000 1400]);
@@ -505,7 +506,7 @@ function [widePath, tallPath] = script8_composite_fig03_(standPaths, outDirs, th
         nexttile(tl2, i); imshow(imgs{i}); axis off;
     end
     tallPath = fullfile(outDirs.compositeTall, ['Fig03_Gradient_CRUR' theme.ext]);
-    exportgraphics(figT, tallPath, 'Resolution', theme.dpi);
+    script8_exportgraphics_(figT, tallPath, theme.dpi);
     close(figT);
 end
 
@@ -604,7 +605,7 @@ function [widePath, tallPath] = script8_composite_transition_figure_(standPaths,
     nexttile(tl, 5); imshow(imgs{2}); axis off;
     nexttile(tl, 6); imshow(imgs{3}); axis off;
     widePath = fullfile(outDirs.compositeWide, [compositeStem theme.ext]);
-    exportgraphics(figW, widePath, 'Resolution', theme.dpi);
+    script8_exportgraphics_(figW, widePath, theme.dpi);
     close(figW);
 
     % Tall: A larger, then B|C below
@@ -614,7 +615,7 @@ function [widePath, tallPath] = script8_composite_transition_figure_(standPaths,
     nexttile(tl2, 7); imshow(imgs{2}); axis off;
     nexttile(tl2, 8); imshow(imgs{3}); axis off;
     tallPath = fullfile(outDirs.compositeTall, [compositeStem theme.ext]);
-    exportgraphics(figT, tallPath, 'Resolution', theme.dpi);
+    script8_exportgraphics_(figT, tallPath, theme.dpi);
     close(figT);
 end
 
@@ -627,34 +628,41 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig06_(data,
 
     primaryBand = data.primaryUR(1);
     primaryCluster = script8_primary_cluster_(data.clusterSummary, primaryBand);
+    primaryFace = script8_cluster_face_label_(primaryCluster, primaryBand, data.clusterSummary);
     facets = pal.coherenceFacets;
     yMaxAct = script8_activity_zt_ymax_(data.activityZT, primaryCluster, facets);
 
     %% A — Cluster period callouts (lines at actual PeriodCentre_h)
-    figA = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
+    figA = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1600 560]);
     axA = axes(figA); hold(axA, 'on');
     CS = data.clusterSummary;
     if ~isempty(CS) && all(ismember({'PeriodCentre_h', 'CandidateCount', 'BandName'}, CS.Properties.VariableNames))
         centres = double(CS.PeriodCentre_h);
         counts = double(CS.CandidateCount);
+        maxCount = max(counts);
+        if ~(isfinite(maxCount) && maxCount > 0), maxCount = 1; end
         for i = 1:numel(centres)
             bn = string(CS.BandName(i));
             col = script8_band_colour_(pal, bn);
-            bar(axA, centres(i), counts(i), 0.32, 'FaceColor', col, 'EdgeColor', 'k', 'LineWidth', 1);
-            xline(axA, centres(i), '--', 'Color', col, 'LineWidth', 1.0, 'HandleVisibility', 'off');
-            nMiceTxt = '';
-            if ismember('MouseCount', CS.Properties.VariableNames)
-                nMiceTxt = sprintf('; %d mice', double(CS.MouseCount(i)));
+            cidI = "";
+            if ismember('ClusterID', CS.Properties.VariableNames)
+                cidI = string(CS.ClusterID(i));
             end
-            text(axA, centres(i), counts(i) + max(counts) * 0.04, ...
-                sprintf('%s\nn=%d candidates%s', script8_band_display_(bn, 'plain'), counts(i), nMiceTxt), ...
-                'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 8, 'Interpreter', 'none');
+            cidShort = script8_cluster_short_label_(cidI, CS);
+            bar(axA, centres(i), counts(i), 0.28, 'FaceColor', col, 'EdgeColor', 'k', 'LineWidth', 1);
+            xline(axA, centres(i), '--', 'Color', col, 'LineWidth', 1.0, 'HandleVisibility', 'off');
+            text(axA, centres(i), counts(i) + maxCount * 0.08, ...
+                sprintf('%s\n%s\nn=%d', cidShort, script8_band_display_(bn, 'plain'), counts(i)), ...
+                'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', ...
+                'FontName', theme.fontName, 'FontSize', 10, 'Interpreter', 'none', 'Clipping', 'off');
         end
-        xlim(axA, [min(centres) - 0.55, max(centres) + 0.55]);
+        xlim(axA, [min(centres) - 0.65, max(centres) + 0.65]);
+        ylim(axA, [0, maxCount * 1.35]);
     end
     xlabel(axA, 'Validated ridge period (h)', 'FontWeight', 'bold');
     ylabel(axA, 'Validated candidates', 'FontWeight', 'bold');
-    title(axA, 'Validated period clusters (UR 1–3 and UR 3–6)', 'FontWeight', 'bold');
+    title(axA, 'Validated period clusters (UR 1–3 and UR 3–6)', ...
+        'FontWeight', 'bold', 'Interpreter', 'none');
     script8_style_axes_(axA, theme);
     script8_panel_label_(axA, 'A', theme);
     standPaths{1} = script8_export_figure_(figA, fullfile(standDir, 'Fig06_A_Clusters'), theme, {theme.ext, '.pdf'});
@@ -666,10 +674,11 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig06_(data,
         axB = subplot(2, 3, fi); hold(axB, 'on');
         set(axB, 'Color', 'w');
         hasData = script8_plot_zt_activity_facet_(axB, data.activityZT, primaryCluster, facets(fi), pal, theme, yMaxAct);
-        title(axB, char(script8_pp_label_(facets(fi))), 'FontWeight', 'bold');
+        title(axB, char(script8_pp_label_(facets(fi))), 'FontWeight', 'bold', 'Interpreter', 'none');
         if ~hasData
             text(axB, 0.5, 0.5, sprintf('No activity for %s', char(script8_pp_label_(facets(fi)))), ...
-                'Units', 'normalized', 'HorizontalAlignment', 'center', 'FontName', theme.fontName);
+                'Units', 'normalized', 'HorizontalAlignment', 'center', ...
+                'FontName', theme.fontName, 'Interpreter', 'none');
         end
         if fi == 1 || fi == 4
             ylabel(axB, 'Activity (z-scored)', 'FontWeight', 'bold');
@@ -683,8 +692,7 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig06_(data,
         set(axB, 'XLim', [0 24], 'Color', 'w');
         script8_style_axes_(axB, theme);
     end
-    sgtitle(figB, sprintf('24h activity — %s (%s)', ...
-        script8_band_display_(primaryBand, 'plain'), char(primaryCluster)), ...
+    sgtitle(figB, sprintf('24h activity — %s', primaryFace), ...
         'FontWeight', 'bold', 'FontName', theme.fontName, 'Interpreter', 'none');
     standPaths{2} = script8_export_figure_(figB, fullfile(standDir, 'Fig06_B_Activity_L12_L22'), theme, {theme.ext, '.pdf'});
     close(figB);
@@ -692,14 +700,12 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig06_(data,
     manifest = script8_manifest_add_(manifest, 'Fig06', 'A', standPaths{1}{1}, 'standalone', ...
         'Validated period cluster callouts', 'Script 7', 'Tol bands', '');
     manifest = script8_manifest_add_(manifest, 'Fig06', 'B', standPaths{2}{1}, 'standalone', ...
-        sprintf('24h ZT activity L12–L22 for primary %s cluster (%s)', ...
-        script8_band_display_(primaryBand, 'plain'), script8_cluster_short_label_(primaryCluster, data.clusterSummary)), ...
+        sprintf('24h ZT activity L12–L22 for primary %s', primaryFace), ...
         'Script 7', 'Tol L12/L22', 'Grey individuals + thick mean; LD shading; shared ylim across facets.');
     [widePath, tallPath] = script8_composite_fig06_(standPaths, outDirs, theme);
     manifest = script8_manifest_add_(manifest, 'Fig06', 'Composite', widePath, '16:9', ...
-        sprintf('Validated clusters (A) and 24h activity L12–L22 for primary %s cluster (%s, panel B).', ...
-        script8_band_display_(primaryBand, 'plain'), script8_cluster_short_label_(primaryCluster, data.clusterSummary)), ...
-        'Script 7', 'Tol', 'Activity grid is hero panel; cluster callout compact above.');
+        sprintf('Validated clusters (A) and 24h activity L12–L22 for primary %s (panel B).', primaryFace), ...
+        'Script 7', 'Tol', 'A:B composite ~1:2.5; activity grid is hero panel.');
 end
 
 function [widePath, tallPath] = script8_composite_fig06_(standPaths, outDirs, theme)
@@ -709,20 +715,21 @@ function [widePath, tallPath] = script8_composite_fig06_(standPaths, outDirs, th
         imgs{i} = script8_trim_image_whitespace_(imread(p));
     end
     stem = 'Fig06_Clusters_Activity_UR13';
-    figW = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1600 1280]);
-    tl = tiledlayout(figW, 6, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
-    nexttile(tl, 1, [1 2]); imshow(imgs{1}); axis off;
-    nexttile(tl, 3, [4 2]); imshow(imgs{2}); axis off;
+    % ~1:2.5 A:B (was ~1:5 — cluster bar unreadable)
+    figW = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1600 1400]);
+    tl = tiledlayout(figW, 7, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+    nexttile(tl, 1, [2 2]); imshow(imgs{1}); axis off;
+    nexttile(tl, 5, [5 2]); imshow(imgs{2}); axis off;
     widePath = fullfile(outDirs.compositeWide, [stem theme.ext]);
-    exportgraphics(figW, widePath, 'Resolution', theme.dpi);
+    script8_exportgraphics_(figW, widePath, theme.dpi);
     close(figW);
 
-    figT = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1000 1680]);
-    tl2 = tiledlayout(figT, 6, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
-    nexttile(tl2, 1); imshow(imgs{1}); axis off;
-    nexttile(tl2, 2, [5 1]); imshow(imgs{2}); axis off;
+    figT = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1000 1800]);
+    tl2 = tiledlayout(figT, 7, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+    nexttile(tl2, 1, [2 1]); imshow(imgs{1}); axis off;
+    nexttile(tl2, 3, [5 1]); imshow(imgs{2}); axis off;
     tallPath = fullfile(outDirs.compositeTall, [stem theme.ext]);
-    exportgraphics(figT, tallPath, 'Resolution', theme.dpi);
+    script8_exportgraphics_(figT, tallPath, theme.dpi);
     close(figT);
 end
 
@@ -755,6 +762,42 @@ function lbl = script8_cluster_short_label_(clusterID, CS)
     end
     if ismember('ClusterRank', sub.Properties.VariableNames)
         lbl = sprintf('C%02d', double(sub.ClusterRank(1)));
+    end
+end
+
+function lbl = script8_cluster_face_label_(clusterID, bandName, CS)
+%SCRIPT8_CLUSTER_FACE_LABEL_ e.g. "UR 1–3 h (C01, 1.5–2.5 h)".
+    band = script8_band_display_(bandName, 'plain');
+    short = script8_cluster_short_label_(clusterID, CS);
+    if strlength(string(short)) == 0
+        lbl = band;
+        return;
+    end
+    rangeTxt = '';
+    if ~isempty(CS) && ismember('ClusterID', CS.Properties.VariableNames)
+        sub = CS(string(CS.ClusterID) == string(clusterID), :);
+        if ~isempty(sub) && all(ismember({'PeriodLow_h', 'PeriodHigh_h'}, sub.Properties.VariableNames))
+            lo = double(sub.PeriodLow_h(1));
+            hi = double(sub.PeriodHigh_h(1));
+            if isfinite(lo) && isfinite(hi)
+                rangeTxt = sprintf(', %.1f–%.1f h', lo, hi);
+            end
+        end
+    end
+    lbl = sprintf('%s (%s%s)', band, short, rangeTxt);
+end
+
+function stem = script8_band_file_stem_(bandName)
+    key = char(string(bandName));
+    switch key
+        case 'UR_1_3', stem = 'UR13';
+        case 'UR_3_6', stem = 'UR36';
+        case 'UR_6_9', stem = 'UR69';
+        case 'UR_9_12', stem = 'UR912';
+        case 'UR_12_18', stem = 'UR1218';
+        case 'CR_20_28', stem = 'CR2028';
+        otherwise
+            stem = regexprep(key, '[^\w]+', '');
     end
 end
 
@@ -1241,117 +1284,181 @@ function script8_plot_24h_profile_(ax, T, yCol, photos, pal, theme, yLabel, band
     script8_style_axes_(ax, theme);
 end
 
-function [manifest, standPaths] = script8_build_cluster_identity_cards_(data, outDirs, theme, manifest)
+function [manifest, standPaths] = script8_build_primary_cluster_supp_(data, paths, outDirs, theme, manifest) %#ok<INUSD>
+%SCRIPT8_BUILD_PRIMARY_CLUSTER_SUPP_ Per-primary-cluster coherence + activity 2x3 (L12–L22).
+% Replaces mixed L12/L22 identity cards. JPEG via print -djpeg only; soft-fails per figure.
     standDir = fullfile(outDirs.standalone, 'Supplementary');
     standPaths = {};
     pal = theme.palette;
-    identityPhotos = [12 22];
+    facets = pal.coherenceFacets;
     nBands = min(2, numel(data.primaryUR));
     if nBands == 0
         return;
     end
-    bands = data.primaryUR(1:nBands);
-    clusters = strings(nBands, 1);
-    for bi = 1:nBands
-        clusters(bi) = script8_primary_cluster_(data.clusterSummary, bands(bi));
-    end
-    yMaxCoh = script8_coherence_zt_ymax_(data.phase24, clusters, identityPhotos, pal);
-    yMaxAct = script8_activity_zt_ymax_(data.activityZT, clusters, identityPhotos);
-    filterNotes = strings(0, 1);
 
-    figAll = figure('Color', 'w', 'Visible', 'off', 'Position', [60 60 1800 420 * nBands]);
-    notesAll = script8_fill_identity_panels_(figAll, nBands, bands, clusters, identityPhotos, ...
-        data, pal, theme, yMaxCoh, yMaxAct, 'ABCDEFGH', 0);
-    filterNotes = unique([filterNotes; notesAll], 'stable');
-    sgtitle(figAll, 'Primary-cluster identity cards (24h phase coherence + activity, L12 and L22)', ...
-        'FontWeight', 'bold', 'FontName', theme.fontName, 'Interpreter', 'none');
-    baseAll = fullfile(standDir, 'Supp_ClusterIdentity_UR13_UR36');
-    outAll = script8_export_figure_(figAll, baseAll, theme, {theme.ext, '.pdf'});
-    close(figAll);
-    standPaths{end + 1} = outAll{1}; %#ok<AGROW>
-    wideCopy = fullfile(outDirs.compositeWide, ['Supp_ClusterIdentity_UR13_UR36' theme.ext]);
-    copyfile(outAll{1}, wideCopy, 'f');
     cohFilterNote = 'Cluster-resolved PhaseCoherence_24h (ClusterID filter).';
-    if any(filterNotes == "band-pooled (no ClusterID column)")
+    if isempty(data.phase24) || ~ismember('ClusterID', data.phase24.Properties.VariableNames)
         cohFilterNote = 'Phase coherence band-pooled (PhaseCoherence_24h lacks ClusterID).';
     end
-    manifest = script8_manifest_add_(manifest, 'Supp', 'ClusterIdentity', outAll{1}, 'standalone', ...
-        ['Primary-cluster identity cards: 24h phase coherence and ZT activity at L12 and L22 for UR 1–3 and UR 3–6 primary clusters. ' ...
-        'Supersedes band-pooled Supp_24h_L12_vs_L24.'], ...
-        'Script 7', 'Tol band + LD shade', cohFilterNote);
 
-    bandStems = ["UR13", "UR36"];
     for bi = 1:nBands
-        figBand = figure('Color', 'w', 'Visible', 'off', 'Position', [60 60 1800 420]);
-        notesBand = script8_fill_identity_panels_(figBand, 1, bands(bi), clusters(bi), identityPhotos, ...
-            data, pal, theme, yMaxCoh, yMaxAct, 'ABCD', 0);
-        filterNotes = unique([filterNotes; notesBand], 'stable');
-        sgtitle(figBand, sprintf('Cluster identity — %s (%s)', ...
-            script8_band_display_(bands(bi), 'plain'), script8_cluster_short_label_(clusters(bi), data.clusterSummary)), ...
-            'FontWeight', 'bold', 'FontName', theme.fontName, 'Interpreter', 'none');
-        baseBand = fullfile(standDir, ['Supp_ClusterIdentity_' bandStems(bi)]);
-        outBand = script8_export_figure_(figBand, baseBand, theme, {theme.ext, '.pdf'});
-        close(figBand);
-        standPaths{end + 1} = outBand{1}; %#ok<AGROW>
-        manifest = script8_manifest_add_(manifest, 'Supp', ['ClusterIdentity_' char(bandStems(bi))], outBand{1}, 'standalone', ...
-            sprintf('Primary-cluster identity card for %s: L12/L22 coherence and activity.', script8_band_display_(bands(bi), 'plain')), ...
-            'Script 7', 'Tol band + LD shade', cohFilterNote);
+        bn = data.primaryUR(bi);
+        cid = script8_primary_cluster_(data.clusterSummary, bn);
+        if strlength(cid) == 0
+            warning('Script8:PrimaryClusterSupp', 'No primary cluster for %s — skipping.', char(bn));
+            continue;
+        end
+        cidShort = script8_cluster_short_label_(cid, data.clusterSummary);
+        face = script8_cluster_face_label_(cid, bn, data.clusterSummary);
+        bandStem = script8_band_file_stem_(bn);
+        fileStem = sprintf('%s_%s', bandStem, cidShort);
+
+        % Type A — phase coherence 2x3
+        outCoh = "";
+        figCoh = [];
+        try
+            figCoh = script8_make_cluster_coherence_fig_(data, bn, cid, facets, pal, theme, face);
+            outCoh = string(script8_export_identity_jpeg_(figCoh, ...
+                fullfile(standDir, ['Supp_ClusterCoherence_' fileStem]), theme));
+            if strlength(outCoh) == 0
+                warning('Script8:ClusterGridExport', 'JPEG export produced no file for Supp_ClusterCoherence_%s', fileStem);
+            end
+        catch ME
+            warning('Script8:ClusterGridExport', 'Coherence grid failed (%s): %s', fileStem, ME.message);
+            outCoh = "";
+        end
+        if ~isempty(figCoh) && isgraphics(figCoh), close(figCoh); end
+        if strlength(outCoh) > 0
+            standPaths{end + 1} = outCoh; %#ok<AGROW>
+            manifest = script8_manifest_add_(manifest, 'Supp', ['ClusterCoherence_' fileStem], outCoh, 'standalone', ...
+                sprintf('24h phase coherence L12–L22 for primary %s.', face), ...
+                'Script 7', 'Tol band + LD shade', cohFilterNote);
+        end
+
+        % Type B — activity 2x3 (parallel for both primary bands; UR13 overlaps Fig06B)
+        outAct = "";
+        figAct = [];
+        try
+            figAct = script8_make_cluster_activity_fig_(data, cid, facets, pal, theme, face);
+            outAct = string(script8_export_identity_jpeg_(figAct, ...
+                fullfile(standDir, ['Supp_ClusterActivity_' fileStem]), theme));
+            if strlength(outAct) == 0
+                warning('Script8:ClusterGridExport', 'JPEG export produced no file for Supp_ClusterActivity_%s', fileStem);
+            end
+        catch ME
+            warning('Script8:ClusterGridExport', 'Activity grid failed (%s): %s', fileStem, ME.message);
+            outAct = "";
+        end
+        if ~isempty(figAct) && isgraphics(figAct), close(figAct); end
+        if strlength(outAct) > 0
+            standPaths{end + 1} = outAct; %#ok<AGROW>
+            noteAct = 'Grey individuals + thick mean; LD shading; shared ylim.';
+            if bi == 1
+                noteAct = [noteAct ' Parallel to Fig06B (primary UR 1–3 identity suite).']; %#ok<AGROW>
+            end
+            manifest = script8_manifest_add_(manifest, 'Supp', ['ClusterActivity_' fileStem], outAct, 'standalone', ...
+                sprintf('24h ZT activity L12–L22 for primary %s.', face), ...
+                'Script 7', 'Tol L12/L22', noteAct);
+        end
     end
 end
 
-function notes = script8_fill_identity_panels_(fig, nRows, rowBands, rowClusters, identityPhotos, data, pal, theme, yMaxCoh, yMaxAct, panelLetters, letterOffset)
-    notes = strings(0, 1);
-    rowBands = string(rowBands);
-    rowClusters = string(rowClusters);
-    for ri = 1:nRows
-        bn = rowBands(ri);
-        cid = rowClusters(ri);
-        bandCol = script8_band_colour_(pal, bn);
-        cidShort = script8_cluster_short_label_(cid, data.clusterSummary);
-        for pj = 1:numel(identityPhotos)
-            photo = identityPhotos(pj);
-            ppTxt = char(script8_pp_label_(photo));
-            tileCoh = (ri - 1) * 4 + (pj - 1) * 2 + 1;
-            tileAct = tileCoh + 1;
-            axC = subplot(nRows, 4, tileCoh, 'Parent', fig);
-            [hasCoh, noteCoh] = script8_plot_zt_coherence_facet_(axC, data.phase24, cid, photo, bandCol, pal, theme, yMaxCoh, bn);
-            if strlength(noteCoh) > 0, notes(end + 1, 1) = noteCoh; end %#ok<AGROW>
-            if ~hasCoh
-                text(axC, 0.5, 0.5, sprintf('No coherence (%s)', ppTxt), 'Units', 'normalized', ...
-                    'HorizontalAlignment', 'center', 'FontName', theme.fontName);
-            end
-            title(axC, sprintf('%s | %s | %s coherence', script8_band_display_(bn, 'plain'), cidShort, ppTxt), ...
-                'FontWeight', 'bold', 'Interpreter', 'none');
-            if pj == 1
-                ylabel(axC, 'Phase coherence R', 'FontWeight', 'bold');
-            end
-            if ri == nRows
-                xlabel(axC, 'ZT (h)', 'FontWeight', 'bold');
-            end
-            li = letterOffset + (ri - 1) * 4 + (pj - 1) * 2 + 1;
-            if li <= numel(panelLetters)
-                script8_panel_label_(axC, panelLetters(li), theme);
-            end
-
-            axA = subplot(nRows, 4, tileAct, 'Parent', fig);
-            hasAct = script8_plot_zt_activity_facet_(axA, data.activityZT, cid, photo, pal, theme, yMaxAct);
-            if ~hasAct
-                text(axA, 0.5, 0.5, sprintf('No activity (%s)', ppTxt), 'Units', 'normalized', ...
-                    'HorizontalAlignment', 'center', 'FontName', theme.fontName);
-            end
-            title(axA, sprintf('%s | %s | %s activity', script8_band_display_(bn, 'plain'), cidShort, ppTxt), ...
-                'FontWeight', 'bold', 'Interpreter', 'none');
-            if pj == 1
-                ylabel(axA, 'Activity (z-scored)', 'FontWeight', 'bold');
-            end
-            if ri == nRows
-                xlabel(axA, 'ZT (h)', 'FontWeight', 'bold');
-            end
-            li = li + 1;
-            if li <= numel(panelLetters)
-                script8_panel_label_(axA, panelLetters(li), theme);
-            end
+function fig = script8_make_cluster_coherence_fig_(data, bandName, clusterID, facets, pal, theme, faceLabel)
+    yMaxCoh = script8_coherence_zt_ymax_(data.phase24, clusterID, facets, pal);
+    bandCol = script8_band_colour_(pal, bandName);
+    fig = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1600 880]);
+    for fi = 1:numel(facets)
+        ax = subplot(2, 3, fi); hold(ax, 'on');
+        set(ax, 'Color', 'w');
+        [hasCoh, ~] = script8_plot_zt_coherence_facet_(ax, data.phase24, clusterID, facets(fi), ...
+            bandCol, pal, theme, yMaxCoh, bandName);
+        title(ax, char(script8_pp_label_(facets(fi))), 'FontWeight', 'bold', 'Interpreter', 'none');
+        if ~hasCoh
+            text(ax, 0.5, 0.5, sprintf('No coherence for %s', char(script8_pp_label_(facets(fi)))), ...
+                'Units', 'normalized', 'HorizontalAlignment', 'center', ...
+                'FontName', theme.fontName, 'Interpreter', 'none');
         end
+        if fi == 1 || fi == 4
+            ylabel(ax, 'Phase coherence R', 'FontWeight', 'bold');
+        end
+        if fi >= 4
+            xlabel(ax, 'ZT (h)', 'FontWeight', 'bold');
+        end
+        set(ax, 'XLim', [0 24], 'Color', 'w');
+        script8_style_axes_(ax, theme);
+    end
+    sgtitle(fig, sprintf('24h phase coherence — %s', faceLabel), ...
+        'FontWeight', 'bold', 'FontName', theme.fontName, 'Interpreter', 'none');
+end
+
+function fig = script8_make_cluster_activity_fig_(data, clusterID, facets, pal, theme, faceLabel)
+    yMaxAct = script8_activity_zt_ymax_(data.activityZT, clusterID, facets);
+    fig = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1600 880]);
+    for fi = 1:numel(facets)
+        ax = subplot(2, 3, fi); hold(ax, 'on');
+        set(ax, 'Color', 'w');
+        hasData = script8_plot_zt_activity_facet_(ax, data.activityZT, clusterID, facets(fi), pal, theme, yMaxAct);
+        title(ax, char(script8_pp_label_(facets(fi))), 'FontWeight', 'bold', 'Interpreter', 'none');
+        if ~hasData
+            text(ax, 0.5, 0.5, sprintf('No activity for %s', char(script8_pp_label_(facets(fi)))), ...
+                'Units', 'normalized', 'HorizontalAlignment', 'center', ...
+                'FontName', theme.fontName, 'Interpreter', 'none');
+        end
+        if fi == 1 || fi == 4
+            ylabel(ax, 'Activity (z-scored)', 'FontWeight', 'bold');
+        end
+        if fi >= 4
+            xlabel(ax, 'ZT (h)', 'FontWeight', 'bold');
+        end
+        set(ax, 'XLim', [0 24], 'Color', 'w');
+        script8_style_axes_(ax, theme);
+    end
+    sgtitle(fig, sprintf('24h activity — %s', faceLabel), ...
+        'FontWeight', 'bold', 'FontName', theme.fontName, 'Interpreter', 'none');
+end
+
+function outPath = script8_export_identity_jpeg_(fig, basePathNoExt, theme)
+%SCRIPT8_EXPORT_IDENTITY_JPEG_ JPEG-only export via print -djpeg (no exportgraphics/PDF).
+    outPath = '';
+    extended_period_gate_ensure_dir(fileparts(basePathNoExt));
+    dpi = round(double(theme.dpi));
+    if ~isscalar(dpi) || ~isfinite(dpi) || dpi <= 0
+        dpi = 150;
+    end
+    dpi = max(72, dpi);
+
+    basePath = char(basePathNoExt);
+    [~, ~, existingExt] = fileparts(basePath);
+    if strlength(string(existingExt)) > 0
+        basePath = basePath(1:end - numel(existingExt));
+    end
+
+    try
+        print(fig, basePath, '-djpeg', sprintf('-r%d', dpi), '-noui');
+    catch ME
+        warning('Script8:PrintJpeg', 'print -djpeg failed for %s: %s', basePath, ME.message);
+        return;
+    end
+
+    produced = [basePath '.jpg'];
+    wantExt = lower(char(string(theme.ext)));
+    if ~ismember(wantExt, {'.jpg', '.jpeg'})
+        wantExt = '.jpeg';
+    end
+    outFile = [basePath wantExt];
+    if isfile(produced)
+        if ~strcmpi(produced, outFile)
+            try
+                copyfile(produced, outFile, 'f');
+                outPath = outFile;
+            catch
+                outPath = produced;
+            end
+        else
+            outPath = produced;
+        end
+    elseif isfile(outFile)
+        outPath = outFile;
     end
 end
 
@@ -1396,9 +1503,14 @@ function [manifest, standPaths] = script8_build_supplementary_(data, paths, outD
     manifest = script8_manifest_add_(manifest, 'Supp', 'Sex_delta', outSex{1}, 'standalone', ...
         'Sex-stratified CR–UR \Delta (moved from main Fig03).', 'Script 6', 'Tol sex', '');
 
-    % Primary-cluster identity cards (replaces band-pooled Supp_24h_L12_vs_L24)
-    [manifest, idPaths] = script8_build_cluster_identity_cards_(data, outDirs, theme, manifest);
-    standPaths = [standPaths, idPaths]; %#ok<AGROW>
+    % Primary-cluster coherence + activity 2x3 (replaces mixed L12/L22 identity cards)
+    try
+        [manifest, idPaths] = script8_build_primary_cluster_supp_(data, paths, outDirs, theme, manifest);
+        standPaths = [standPaths, idPaths]; %#ok<AGROW>
+    catch ME
+        warning('Script8:PrimaryClusterSupp', ...
+            'Primary-cluster supplementary figures failed (continuing): %s', ME.message);
+    end
 
     % Per-cluster 24h activity (non-primary UR 1–3 clusters)
     facets = pal.coherenceFacets;
@@ -1516,7 +1628,7 @@ function [widePath, tallPath] = script8_composite_grid_(items, outDirs, name, th
         if ~isempty(img), imshow(img); axis off; end
     end
     widePath = fullfile(outDirs.compositeWide, [name theme.ext]);
-    exportgraphics(figW, widePath, 'Resolution', theme.dpi);
+    script8_exportgraphics_(figW, widePath, theme.dpi);
     close(figW);
 
     figT = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1000 1250]);
@@ -1528,7 +1640,7 @@ function [widePath, tallPath] = script8_composite_grid_(items, outDirs, name, th
         if ~isempty(img), imshow(img); axis off; end
     end
     tallPath = fullfile(outDirs.compositeTall, [name theme.ext]);
-    exportgraphics(figT, tallPath, 'Resolution', theme.dpi);
+    script8_exportgraphics_(figT, tallPath, theme.dpi);
     close(figT);
 end
 
@@ -1564,8 +1676,18 @@ end
 %% Theme / IO / manifest helpers
 function theme = script8_theme_(cfg)
     pal = extended_tol_bright_palette();
+    dpi = double(cfg.plot.saveDpi);
+    if ~isscalar(dpi) || ~isfinite(dpi) || dpi <= 0
+        dpi = 150;
+    end
+    ext = char(string(cfg.plot.figExt));
+    if strlength(string(ext)) == 0
+        ext = '.png';
+    elseif ~startsWith(ext, '.')
+        ext = ['.' ext];
+    end
     theme = struct('palette', pal, 'fontName', pal.fontName, ...
-        'dpi', cfg.plot.saveDpi, 'ext', cfg.plot.figExt, 'plotMode', string(cfg.plotMode));
+        'dpi', round(dpi), 'ext', ext, 'plotMode', string(cfg.plotMode));
 end
 
 function outDirs = script8_make_output_dirs_(cohortRoot, plotMode)
@@ -1612,10 +1734,10 @@ function T = script8_colour_key_table_()
         'CR 20–28 h', '#BBBBBB', 'CR traces / dark schematic';
         'Female', '#228833', 'Sex inset only';
         'Male', '#CCBB44', 'Sex inset only';
-        'L12 (compare)', '#4477AA', 'Fig06 / supp 24h activity + cluster identity L12';
-        'L22 / L24', '#AA3377', 'Fig06 / supp 24h activity + cluster identity L22';
-        'Cluster identity coherence', 'Band colour', 'Supp_ClusterIdentity_* coherence traces';
-        'LD shading (ZT)', '#BBBBBB 8%', '24h activity + cluster identity ZT panels';
+        'L12 (compare)', '#4477AA', 'Fig06 / supp 24h activity L12';
+        'L22 / L24', '#AA3377', 'Fig06 / supp 24h activity L22';
+        'Cluster coherence', 'Band colour', 'Supp_ClusterCoherence_* R vs ZT';
+        'LD shading (ZT)', '#BBBBBB 8%', '24h activity + cluster coherence ZT panels';
         'Scalograms', 'Jet', 'Fig02 RAW + HSub residual'};
     T = cell2table(roles, 'VariableNames', {'Role', 'Colour', 'Usage'});
 end
@@ -1637,14 +1759,138 @@ function script8_save_storyboard_(compositeFiles, pdfPath)
     end
 end
 
+function script8_exportgraphics_(fig, outFile, dpi)
+%SCRIPT8_EXPORTGRAPHICS_ Version-safe export with raster fallbacks (soft-fail: warn, never throw).
+    if nargin < 3 || isempty(dpi)
+        dpi = 150;
+    end
+    dpi = round(double(dpi(1)));
+    if ~isfinite(dpi) || dpi <= 0
+        dpi = 150;
+    end
+
+    try
+        [outDir, baseName, ext] = fileparts(outFile);
+        if strlength(string(ext)) == 0
+            ext = '.png';
+            outFile = fullfile(outDir, [baseName ext]);
+        end
+        extLower = lower(ext);
+        basePath = fullfile(outDir, baseName);
+
+        if ismember(extLower, {'.pdf', '.eps', '.emf'})
+            exportgraphics(fig, outFile, 'ContentType', 'vector');
+            return;
+        end
+
+        if script8_try_exportgraphics_raster_(fig, outFile, dpi)
+            return;
+        end
+
+        resFlag = sprintf('-r%d', dpi);
+        produced = '';
+        switch extLower
+            case {'.jpg', '.jpeg'}
+                print(fig, basePath, '-djpeg', resFlag, '-noui');
+                produced = [basePath '.jpg'];
+            case '.png'
+                print(fig, basePath, '-dpng', resFlag, '-noui');
+                produced = [basePath '.png'];
+            case {'.tif', '.tiff'}
+                print(fig, basePath, '-dtiff', resFlag, '-noui');
+                produced = [basePath '.tif'];
+            otherwise
+                script8_saveas_fallback_(fig, outFile, basePath, extLower);
+                return;
+        end
+
+        if isfile(outFile)
+            return;
+        end
+        if strlength(string(produced)) > 0 && isfile(produced) && ~strcmpi(produced, outFile)
+            copyfile(produced, outFile, 'f');
+            return;
+        end
+        script8_saveas_fallback_(fig, outFile, basePath, extLower);
+    catch ME
+        warning('Script8:ExportFailed', 'Could not export figure to %s: %s', outFile, ME.message);
+    end
+end
+
+function script8_saveas_fallback_(fig, outFile, basePath, extLower)
+%SCRIPT8_SAVEAS_FALLBACK_ Last-resort saveas; never pass .jpeg as filename extension.
+% Soft-fail: warning only (does not throw).
+    try
+        if ismember(extLower, {'.jpg', '.jpeg'})
+            % saveas rejects ".jpeg" in the path — use format flag + .jpg
+            saveas(fig, basePath, 'jpg');
+            produced = [basePath '.jpg'];
+            if ~strcmpi(produced, outFile) && isfile(produced)
+                copyfile(produced, outFile, 'f');
+            end
+        elseif ismember(extLower, {'.png'})
+            saveas(fig, basePath, 'png');
+            produced = [basePath '.png'];
+            if ~strcmpi(produced, outFile) && isfile(produced)
+                copyfile(produced, outFile, 'f');
+            end
+        elseif ismember(extLower, {'.tif', '.tiff'})
+            saveas(fig, basePath, 'tiff');
+            produced = [basePath '.tif'];
+            if ~strcmpi(produced, outFile) && isfile(produced)
+                copyfile(produced, outFile, 'f');
+            end
+        else
+            saveas(fig, outFile);
+        end
+        if ~isfile(outFile)
+            warning('Script8:ExportFailed', 'Export reported success but file missing: %s', outFile);
+        end
+    catch ME
+        warning('Script8:ExportFailed', 'Could not export figure to %s: %s', outFile, ME.message);
+    end
+end
+
+function ok = script8_try_exportgraphics_raster_(fig, outFile, dpi)
+    ok = false;
+    for k = 1:4
+        switch k
+            case 1, resVal = dpi;
+            case 2, resVal = uint16(dpi);
+            case 3, resVal = int32(dpi);
+            otherwise, resVal = [];
+        end
+        try
+            if isempty(resVal)
+                exportgraphics(fig, outFile);
+            else
+                exportgraphics(fig, outFile, 'Resolution', resVal);
+            end
+            ok = true;
+            return;
+        catch
+        end
+    end
+end
+
 function outPaths = script8_export_figure_(fig, basePath, theme, formats)
     outPaths = cell(numel(formats), 1);
     extended_period_gate_ensure_dir(fileparts(basePath));
+    [bpDir, bpName, bpExt] = fileparts(basePath);
+    if strlength(string(bpExt)) > 0
+        basePath = fullfile(bpDir, bpName);
+    end
+    dpi = double(theme.dpi);
+    if ~isscalar(dpi) || ~isfinite(dpi) || dpi <= 0
+        dpi = 150;
+    end
+    dpi = round(dpi);
+
     for i = 1:numel(formats)
-        ext = formats{i};
+        ext = char(formats{i});
         if ~startsWith(ext, '.'), ext = ['.' ext]; end
         outFile = [basePath ext];
-        exportgraphics(fig, outFile, 'Resolution', theme.dpi);
+        script8_exportgraphics_(fig, outFile, dpi);
         outPaths{i} = outFile;
     end
 end
