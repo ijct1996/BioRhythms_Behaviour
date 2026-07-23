@@ -1,12 +1,18 @@
 function out = extended_script8_publication_figures_run(cohortRoot, cfg)
 %EXTENDED_SCRIPT8_PUBLICATION_FIGURES_RUN Curated publication composites (Scripts 1-7 inputs).
+%
+%   Five main figures:
+%     Fig01 High-level methods schematic (5 steps)
+%     Fig02 RAW + HSub scalograms + CarryForward retention (A-E)
+%     Fig03 Photoperiod gradient CR–UR (A-C; sex in Supplementary)
+%     Fig04 Transition coherence hero (C then A|B)
+%     Fig05 Cluster-anchored activity resync at LD/DL
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
     end
     cfg = extended_apply_plot_cfg(cfg);
     theme = script8_theme_(cfg);
-    pal = theme.palette;
 
     if nargin < 1 || isempty(cohortRoot)
         cohortRoot = uigetdir(pwd, 'Select cohort results folder (e.g. C57_LP)');
@@ -36,37 +42,37 @@ function out = extended_script8_publication_figures_run(cohortRoot, cfg)
     manifest = script8_manifest_init_();
     compositeWide = strings(0, 1);
 
-    %% Fig 0 — Pipeline
-    [manifest, wide0, stand0] = script8_build_fig00_(paths, outDirs, theme, manifest);
-    compositeWide(end + 1, 1) = string(wide0); %#ok<AGROW>
-    script8_log_(LOG, 'Fig 0 complete');
-
-    %% Fig 1 — Scalograms
-    [manifest, wide1, tall1, stand1] = script8_build_fig01_(paths, outDirs, theme, manifest);
+    %% Fig01 — Methods overview
+    [manifest, wide1, ~] = script8_build_fig01_(paths, outDirs, theme, manifest);
     compositeWide(end + 1, 1) = string(wide1); %#ok<AGROW>
-    script8_export_tall_copy_(tall1, wide1, outDirs.compositeTall);
-    script8_log_(LOG, 'Fig 1 complete (%d standalone)', numel(stand1));
+    script8_log_(LOG, 'Fig 01 complete');
 
-    %% Fig 2 — Gradient
-    [manifest, wide2, tall2, stand2] = script8_build_fig02_(data, outDirs, theme, cfg, manifest);
+    %% Fig02 — RAW + HSub + retention
+    [manifest, wide2, tall2, stand2] = script8_build_fig02_(data, paths, outDirs, theme, manifest);
     compositeWide(end + 1, 1) = string(wide2); %#ok<AGROW>
     script8_export_tall_copy_(tall2, wide2, outDirs.compositeTall);
-    script8_log_(LOG, 'Fig 2 complete');
+    script8_log_(LOG, 'Fig 02 complete (%d standalone)', numel(stand2));
 
-    %% Fig 3 — Transitions
-    [manifest, wide3, tall3, stand3] = script8_build_fig03_(data, outDirs, theme, cfg, manifest);
+    %% Fig03 — Gradient CR–UR (A–C; sex → Supplementary)
+    [manifest, wide3, tall3] = script8_build_fig03_(data, outDirs, theme, cfg, manifest);
     compositeWide(end + 1, 1) = string(wide3); %#ok<AGROW>
     script8_export_tall_copy_(tall3, wide3, outDirs.compositeTall);
-    script8_log_(LOG, 'Fig 3 complete');
+    script8_log_(LOG, 'Fig 03 complete');
 
-    %% Fig 4 — Mechanistic
-    [manifest, wide4, tall4, stand4] = script8_build_fig04_(data, paths, outDirs, theme, cfg, manifest);
+    %% Fig04 — Transitions (C hero, then A|B)
+    [manifest, wide4, tall4] = script8_build_fig04_(data, outDirs, theme, cfg, manifest);
     compositeWide(end + 1, 1) = string(wide4); %#ok<AGROW>
     script8_export_tall_copy_(tall4, wide4, outDirs.compositeTall);
-    script8_log_(LOG, 'Fig 4 complete');
+    script8_log_(LOG, 'Fig 04 complete');
 
-    %% Supplementary standalone
-    [manifest, standS] = script8_build_supplementary_(data, paths, outDirs, theme, manifest);
+    %% Fig05 — Cluster + transition-aligned activity resync
+    [manifest, wide5, tall5] = script8_build_fig05_(data, outDirs, theme, cfg, manifest);
+    compositeWide(end + 1, 1) = string(wide5); %#ok<AGROW>
+    script8_export_tall_copy_(tall5, wide5, outDirs.compositeTall);
+    script8_log_(LOG, 'Fig 05 complete');
+
+    %% Supplementary
+    [manifest, ~] = script8_build_supplementary_(data, paths, outDirs, theme, manifest);
     script8_log_(LOG, 'Supplementary complete');
 
     script8_write_manifest_(manifest, outDirs.manifest);
@@ -101,156 +107,167 @@ function data = script8_load_data_(paths, cfg)
     data.ridge24 = script8_read_sheet_(paths.profilesXlsx, 'RidgePower_24h');
     data.clusterSummary = script8_read_sheet_(paths.profilesXlsx, 'ClusterSummary');
     data.retention = script8_read_sheet_(paths.gateXlsx, 'Retention_ByBand');
+    data.activityZT = script8_read_sheet_(paths.profilesXlsx, 'ActivityComponent_24h');
     data.primaryUR = string(cfg.bands.primaryUR);
     data.ppOrder = script8_pp_order_(data.pairSummary);
     data.nMice = script8_total_mice_(data.sexBalance);
 end
 
-%% Fig 0
-function [manifest, widePath, standPaths] = script8_build_fig00_(paths, outDirs, theme, manifest)
+%% Fig01 — High-level methods schematic (publication narrative)
+function [manifest, widePath, standPaths] = script8_build_fig01_(paths, outDirs, theme, manifest) %#ok<INUSD>
     pal = theme.palette;
-    standPaths = {};
-    fig = figure('Color', 'w', 'Units', 'pixels', 'Position', [80 80 1400 420], 'Visible', 'off');
-    ax = axes(fig, 'Position', [0.05 0.22 0.9 0.68]); hold(ax, 'on');
+    fig = figure('Color', 'w', 'Units', 'pixels', 'Position', [80 80 1400 380], 'Visible', 'off');
+    ax = axes(fig, 'Position', [0.04 0.20 0.92 0.68]); hold(ax, 'on');
     axis(ax, [0 10 0 1]); axis(ax, 'off');
 
-    boxes = {
-        0.65, 0.55, sprintf('RAW activity\n(Script 2 wavelet)');
-        2.55, 0.55, sprintf('CarryForward gate\n±15%% SEL_P360 (Script 4)');
-        4.65, 0.55, sprintf('Transition resync\n(Script 5)');
-        7.15, 0.55, sprintf('Gradient LME\n(Script 6)');
-        4.65, 0.15, sprintf('Phase / 24h profiles\n(Script 7)');
-        2.55, 0.15, sprintf('HSub validation\n(Core Script 1-3)');
+    steps = {
+        1.0, sprintf('Raw\nactivity');
+        3.0, sprintf('Wavelet');
+        5.0, sprintf('Harmonic\nsubtraction');
+        7.0, sprintf('CR–UR\nco-expression');
+        9.0, sprintf('Ultradian\nphase coherence');
         };
-    for i = 1:size(boxes, 1)
-        x = boxes{i, 1}; y = boxes{i, 2}; txt = boxes{i, 3};
-        w = 1.8; h = 0.28;
-        rectangle(ax, 'Position', [x - w/2, y - h/2, w, h], 'Curvature', 0.08, ...
-            'FaceColor', [1 1 1], 'EdgeColor', pal.base(1, :), 'LineWidth', 1.5);
-        text(ax, x, y, txt, 'HorizontalAlignment', 'center', 'FontName', theme.fontName, ...
-            'FontWeight', 'bold', 'FontSize', 11, 'Interpreter', 'none');
+    w = 1.55; h = 0.38;
+    for i = 1:size(steps, 1)
+        x = steps{i, 1}; txt = steps{i, 2};
+        rectangle(ax, 'Position', [x - w/2, 0.45 - h/2, w, h], 'Curvature', 0.08, ...
+            'FaceColor', [1 1 1], 'EdgeColor', pal.base(1, :), 'LineWidth', 1.6);
+        text(ax, x, 0.45, txt, 'HorizontalAlignment', 'center', 'FontName', theme.fontName, ...
+            'FontWeight', 'bold', 'FontSize', 13, 'Interpreter', 'none');
+        text(ax, x, 0.72, sprintf('%d', i), 'HorizontalAlignment', 'center', ...
+            'FontName', theme.fontName, 'FontWeight', 'bold', 'FontSize', 14, 'Color', pal.base(1, :));
+        if i < size(steps, 1)
+            text(ax, x + 1.0, 0.45, '\rightarrow', 'Color', pal.base(1, :), 'FontSize', 24, ...
+                'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'Interpreter', 'tex');
+        end
     end
-    annotation(fig, 'textbox', [0.05 0.02 0.9 0.12], 'String', ...
-        'Raw UR candidates carried forward only when matched to HSub residual (±15% period tolerance).', ...
-        'EdgeColor', 'none', 'HorizontalAlignment', 'center', 'FontName', theme.fontName, ...
-        'FontSize', 11, 'FontWeight', 'bold', 'Interpreter', 'none');
-    script8_arrow_(ax, 1.55, 0.55, 1.85, 0.55, pal.base(1, :));
-    script8_arrow_(ax, 3.45, 0.55, 3.75, 0.55, pal.base(1, :));
-    script8_arrow_(ax, 5.55, 0.55, 6.25, 0.55, pal.base(1, :));
-    script8_arrow_(ax, 3.8, 0.48, 3.2, 0.28, pal.base(7, :));
-    script8_arrow_(ax, 5.55, 0.42, 4.85, 0.28, pal.base(3, :));
-    title(ax, 'Extended analysis pipeline (C57\_LP)', 'FontName', theme.fontName, 'FontWeight', 'bold');
 
-    base = fullfile(outDirs.standalone, 'Fig00_Pipeline');
+    text(ax, 5, 0.08, ...
+        'Extended validation: Raw UR ridge candidates carried forward only when period-matched to HSub residual (+/-15% SEL_P360).', ...
+        'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 11, ...
+        'FontWeight', 'bold', 'Interpreter', 'none');
+    title(ax, 'Analysis overview', 'FontName', theme.fontName, 'FontWeight', 'bold');
+
+    base = fullfile(outDirs.standalone, 'Fig01_MethodsOverview');
     standPaths = script8_export_figure_(fig, base, theme, {theme.ext, '.pdf'});
-    widePath = fullfile(outDirs.compositeWide, ['Fig00_Pipeline' theme.ext]);
+    widePath = fullfile(outDirs.compositeWide, ['Fig01_MethodsOverview' theme.ext]);
     copyfile(standPaths{1}, widePath, 'f');
     close(fig);
-    manifest = script8_manifest_add_(manifest, 'Fig00', 'All', widePath, '16:9', ...
-        'Analysis pipeline from RAW activity through CarryForward validation to transition and gradient inference.', ...
-        'Script8', 'Schematic', 'Includes HSub validation branch.');
+    manifest = script8_manifest_add_(manifest, 'Fig01', 'All', widePath, '16:9', ...
+        'High-level analysis steps: raw activity, wavelet, harmonic subtraction, CR–UR co-expression, ultradian phase coherence.', ...
+        'Script8', 'Schematic', 'Script numbers omitted from boxes; see caption.');
 end
 
-%% Fig 1
-function [manifest, widePath, tallPath, standPaths] = script8_build_fig01_(paths, outDirs, theme, manifest)
-    standDir = fullfile(outDirs.standalone, 'Fig01_Scalograms');
+%% Fig02 — RAW A|B, HSub C|D, retention E
+function [manifest, widePath, tallPath, standPaths] = script8_build_fig02_(data, paths, outDirs, theme, manifest)
+    pal = theme.palette;
+    standDir = fullfile(outDirs.standalone, 'Fig02_Scalograms');
     extended_period_gate_ensure_dir(standDir);
-    imgs = {
-        paths.scalogramRawF, 'A', 'RAW stitched — Female';
-        paths.scalogramRawM, 'B', 'RAW stitched — Male';
-        paths.scalogramHSubF, 'C', 'HSub residual — Female';
-        paths.scalogramHSubM, 'D', 'HSub residual — Male';
+    standPaths = cell(5, 1);
+
+    panels = {
+        paths.scalogramRawF,  'A', 'RAW stitched — Female',   false;
+        paths.scalogramRawM,  'B', 'RAW stitched — Male',     false;
+        paths.scalogramHSubF, 'C', 'HSub residual — Female',  true;
+        paths.scalogramHSubM, 'D', 'HSub residual — Male',    true;
         };
-    standPaths = cell(4, 1);
     for i = 1:4
-        if i >= 3
-            img = script8_crop_hsub_residual_(imgs{i, 1});
-        else
-            img = imread(imgs{i, 1});
+        if ~isfile(panels{i, 1})
+            error('extended_script8_publication_figures_run:MissingScalogram', ...
+                'Missing scalogram image: %s', panels{i, 1});
         end
-        fig = figure('Color', 'w', 'Visible', 'off', 'Units', 'pixels', 'Position', [50 50 max(size(img, 2), 400) max(size(img, 1), 300)]);
+        if panels{i, 4}
+            img = script8_crop_hsub_residual_(panels{i, 1});
+        else
+            img = imread(panels{i, 1});
+        end
+        fig = figure('Color', 'w', 'Visible', 'off', 'Units', 'pixels', ...
+            'Position', [50 50 max(size(img, 2), 400) max(size(img, 1), 300)]);
         ax = axes(fig); imshow(img, 'Parent', ax); axis(ax, 'off');
-        title(ax, imgs{i, 3}, 'FontName', theme.fontName, 'FontWeight', 'bold', 'Interpreter', 'none');
-        script8_panel_label_(ax, imgs{i, 2}, theme);
-        base = fullfile(standDir, sprintf('Fig01_%s_%s', imgs{i, 2}, strrep(imgs{i, 3}, ' ', '_')));
+        title(ax, panels{i, 3}, 'FontName', theme.fontName, 'FontWeight', 'bold', 'Interpreter', 'none');
+        script8_panel_label_(ax, panels{i, 2}, theme);
+        base = fullfile(standDir, sprintf('Fig02_%s_%s', panels{i, 2}, ...
+            regexprep(panels{i, 3}, '[^A-Za-z0-9]+', '_')));
         standPaths{i} = script8_export_figure_(fig, base, theme, {theme.ext});
         close(fig);
-        manifest = script8_manifest_add_(manifest, 'Fig01', imgs{i, 2}, standPaths{i}{1}, 'standalone', ...
-            imgs{i, 3}, 'Script 3', 'Jet scalogram', '');
+        note = 'RAW circadian context in main figure.';
+        if panels{i, 4}, note = 'HSub residual half-crop.'; end
+        manifest = script8_manifest_add_(manifest, 'Fig02', panels{i, 2}, standPaths{i}{1}, 'standalone', ...
+            panels{i, 3}, 'Script 3', 'Jet scalogram', note);
     end
 
-    [widePath, tallPath] = script8_composite_grid_(standPaths, outDirs, 'Fig01_Scalograms_2x2', theme, [2 2], [16 9], [4 5]);
-    manifest = script8_manifest_add_(manifest, 'Fig01', 'Composite', widePath, '16:9', ...
-        'Multiscale structure across photoperiod gradient: RAW vs HSub-residual (group averages).', ...
-        'Script 3', 'Jet', 'Panels A–B RAW; C–D HSub residual only.');
+    %% Panel E — CarryForward retention
+    figE = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 720 420]);
+    axE = axes(figE); hold(axE, 'on');
+    R = data.retention;
+    if ~isempty(R)
+        bn = string(R.BandName);
+        retCol = R.Properties.VariableNames{contains(R.Properties.VariableNames, 'RetentionPct_Elig', 'IgnoreCase', true)};
+        y = double(R.(retCol));
+        for i = 1:numel(y)
+            bar(axE, i, y(i), 0.7, 'FaceColor', script8_band_colour_(pal, bn(i)), 'EdgeColor', 'k');
+        end
+        set(axE, 'XTick', 1:numel(bn), 'XTickLabel', arrayfun(@(b) script8_band_display_(b, 'tex'), bn, 'UniformOutput', false));
+        axE.TickLabelInterpreter = 'tex';
+        ylim(axE, [0 105]);
+    end
+    ylabel(axE, 'Validated retention (% eligible Raw)', 'FontWeight', 'bold');
+    title(axE, 'CarryForward retention by band', 'FontWeight', 'bold');
+    script8_style_axes_(axE, theme);
+    script8_panel_label_(axE, 'E', theme);
+    standPaths{5} = script8_export_figure_(figE, fullfile(standDir, 'Fig02_E_Retention'), theme, {theme.ext, '.pdf'});
+    close(figE);
+    manifest = script8_manifest_add_(manifest, 'Fig02', 'E', standPaths{5}{1}, 'standalone', ...
+        'CarryForward retention by band', 'Script 4', 'Tol bands', '');
+
+    [widePath, tallPath] = script8_composite_fig02_(standPaths, outDirs, theme);
+    manifest = script8_manifest_add_(manifest, 'Fig02', 'Composite', widePath, '16:9', ...
+        'RAW and HSub residual scalograms with CarryForward retention QC.', ...
+        'Scripts 3/4', 'Jet + Tol', 'Tall primary: A|B, C|D, E.');
 end
 
-%% Fig 2
-function [manifest, widePath, tallPath, standPaths] = script8_build_fig02_(data, outDirs, theme, cfg, manifest)
+function [widePath, tallPath] = script8_composite_fig02_(standPaths, outDirs, theme)
+    imgs = cell(5, 1);
+    for i = 1:5
+        p = standPaths{i}; if iscell(p), p = p{1}; end
+        imgs{i} = script8_trim_image_whitespace_(imread(p));
+    end
+    % Wide: same stacking as tall (A|B / C|D / E)
+    figW = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1600 1100]);
+    tl = tiledlayout(figW, 3, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+    nexttile(tl, 1); imshow(imgs{1}); axis off;
+    nexttile(tl, 2); imshow(imgs{2}); axis off;
+    nexttile(tl, 3); imshow(imgs{3}); axis off;
+    nexttile(tl, 4); imshow(imgs{4}); axis off;
+    nexttile(tl, 5, [1 2]); imshow(imgs{5}); axis off;
+    widePath = fullfile(outDirs.compositeWide, ['Fig02_Scalograms_Retention' theme.ext]);
+    exportgraphics(figW, widePath, 'Resolution', theme.dpi);
+    close(figW);
+
+    figT = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1000 1400]);
+    tl2 = tiledlayout(figT, 3, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+    nexttile(tl2, 1); imshow(imgs{1}); axis off;
+    nexttile(tl2, 2); imshow(imgs{2}); axis off;
+    nexttile(tl2, 3); imshow(imgs{3}); axis off;
+    nexttile(tl2, 4); imshow(imgs{4}); axis off;
+    nexttile(tl2, 5, [1 2]); imshow(imgs{5}); axis off;
+    tallPath = fullfile(outDirs.compositeTall, ['Fig02_Scalograms_Retention' theme.ext]);
+    exportgraphics(figT, tallPath, 'Resolution', theme.dpi);
+    close(figT);
+end
+
+%% Fig03 — Gradient CR–UR (A–C main; D sex also written for Supplementary reuse)
+function [manifest, widePath, tallPath, standPaths] = script8_build_fig03_(data, outDirs, theme, cfg, manifest) %#ok<INUSD>
     pal = theme.palette;
-    standDir = fullfile(outDirs.standalone, 'Fig02_Gradient');
+    standDir = fullfile(outDirs.standalone, 'Fig03_Gradient');
     extended_period_gate_ensure_dir(standDir);
     standPaths = cell(4, 1);
     pp = data.ppOrder;
     ppLabels = arrayfun(@(x) char(script8_pp_label_(x)), pp, 'UniformOutput', false);
 
-    %% Panel A — Delta UR-CR
+    %% A — UR band heatmap
     figA = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
-    axA = axes(figA); hold(axA, 'on');
-    for b = 1:numel(data.primaryUR)
-        bn = data.primaryUR(b);
-        sub = data.pairSummary(string(data.pairSummary.UR_Band) == bn & string(data.pairSummary.Phase) == "All", :);
-        sub = sortrows(sub, 'Photoperiod_h');
-        col = script8_band_colour_(pal, bn);
-        y = sub.Mean_Delta_log10;
-        x = 1:height(sub);
-        err = sub.SD_Delta_log10 ./ sqrt(max(data.nMice, 1));
-        errorbar(axA, x, y, err, '-o', 'Color', col, 'LineWidth', 2, 'MarkerFaceColor', col, 'CapSize', 8);
-        script8_direct_line_label_(axA, x(end), y(end), char(bn), col, theme);
-        if script8_lme_pp_sig_(data.lmeFdr, bn, 'Delta')
-            plot(axA, x(end), y(end), 'k*', 'MarkerSize', 8, 'HandleVisibility', 'off');
-        end
-    end
-    script8_yline_zero_(axA);
-    set(axA, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
-    xlabel(axA, 'Photoperiod', 'FontWeight', 'bold');
-    ylabel(axA, '\Delta(UR - CR) log_{10} power', 'FontWeight', 'bold');
-    title(axA, 'CR–UR co-expression across photoperiod', 'FontWeight', 'bold');
-    script8_style_axes_(axA, theme);
-    script8_panel_label_(axA, 'A', theme);
-    script8_add_n_annotation_(axA, data.nMice, [], theme);
-    xl = xlim(axA); yl = ylim(axA);
-    text(axA, xl(2), yl(1) + 0.08 * range(yl), 'L24: CR collapse \rightarrow UR > CR', ...
-        'HorizontalAlignment', 'right', 'FontName', theme.fontName, 'FontSize', 9, 'Color', pal.l24);
-    standPaths{1} = script8_export_figure_(figA, fullfile(standDir, 'Fig02_A_Delta'), theme, {theme.ext, '.pdf'});
-    close(figA);
-
-    %% Panel B — CR vs UR_1_3 power
-    figB = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
-    axB = axes(figB); hold(axB, 'on');
-    cr = data.absSummary(string(data.absSummary.BandName) == "CR_20_28" & string(data.absSummary.Phase) == "All", :);
-    ur = data.absSummary(string(data.absSummary.BandName) == "UR_1_3" & string(data.absSummary.Phase) == "All", :);
-    cr = sortrows(cr, 'Photoperiod_h'); ur = sortrows(ur, 'Photoperiod_h');
-    crErr = cr.SD_Log10 ./ sqrt(max(data.nMice, 1));
-    urErr = ur.SD_Log10 ./ sqrt(max(data.nMice, 1));
-    errorbar(axB, 1:height(cr), cr.Mean_Log10, crErr, '-s', 'Color', pal.cr, 'LineWidth', 2, ...
-        'MarkerFaceColor', pal.cr, 'CapSize', 8);
-    errorbar(axB, 1:height(ur), ur.Mean_Log10, urErr, '-o', 'Color', script8_band_colour_(pal, 'UR_1_3'), ...
-        'LineWidth', 2, 'MarkerFaceColor', script8_band_colour_(pal, 'UR_1_3'), 'CapSize', 8);
-    script8_direct_line_label_(axB, height(cr), cr.Mean_Log10(end), 'CR', pal.cr, theme);
-    script8_direct_line_label_(axB, height(ur), ur.Mean_Log10(end), 'UR\_1\_3', script8_band_colour_(pal, 'UR_1_3'), theme);
-    set(axB, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
-    xlabel(axB, 'Photoperiod', 'FontWeight', 'bold');
-    ylabel(axB, 'Mean log_{10} band power', 'FontWeight', 'bold');
-    title(axB, 'Absolute CR vs UR\_1\_3 power', 'FontWeight', 'bold');
-    script8_style_axes_(axB, theme);
-    script8_panel_label_(axB, 'B', theme);
-    standPaths{2} = script8_export_figure_(figB, fullfile(standDir, 'Fig02_B_AbsPower'), theme, {theme.ext, '.pdf'});
-    close(figB);
-
-    %% Panel C — UR band heatmap (delta summary)
-    figC = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
-    axC = axes(figC);
+    axA = axes(figA);
     urBands = pal.allUR;
     M = nan(numel(urBands), numel(pp));
     for bi = 1:numel(urBands)
@@ -260,136 +277,536 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig02_(data,
             if ~isempty(row), M(bi, pi) = row.Mean_Delta_log10(1); end
         end
     end
-    imagesc(axC, M);
-    colormap(axC, script8_diverging_cmap_());
-    cb = colorbar(axC); cb.Label.String = '\Delta(UR-CR)';
-    set(axC, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels, 'YTick', 1:numel(urBands), ...
-        'YTickLabel', cellstr(urBands));
-    title(axC, 'UR band summary (\Delta UR-CR)', 'FontWeight', 'bold');
-    script8_panel_label_(axC, 'C', theme);
-    standPaths{3} = script8_export_figure_(figC, fullfile(standDir, 'Fig02_C_Heatmap'), theme, {theme.ext, '.pdf'});
-    close(figC);
+    imagesc(axA, M);
+    colormap(axA, script8_diverging_cmap_());
+    cb = colorbar(axA); cb.Label.String = '\Delta(UR-CR)';
+    yLab = arrayfun(@(b) script8_band_display_(b, 'tex'), urBands, 'UniformOutput', false);
+    set(axA, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels, 'YTick', 1:numel(urBands), ...
+        'YTickLabel', yLab, 'TickLabelInterpreter', 'tex');
+    title(axA, 'UR band summary (\Delta UR-CR)', 'FontWeight', 'bold');
+    script8_panel_label_(axA, 'A', theme);
+    standPaths{1} = script8_export_figure_(figA, fullfile(standDir, 'Fig03_A_Heatmap'), theme, {theme.ext, '.pdf'});
+    close(figA);
 
-    %% Panel D — Sex inset
-    figD = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
-    axD = axes(figD); hold(axD, 'on');
-    if ~isempty(data.pairBySex)
-        pooled = data.pairSummary(string(data.pairSummary.UR_Band) == "UR_1_3" & string(data.pairSummary.Phase) == "All", :);
-        pooled = sortrows(pooled, 'Photoperiod_h');
-        plot(axD, 1:height(pooled), pooled.Mean_Delta_log10, '--', 'Color', pal.pooled, 'LineWidth', 1.2);
-        for sx = ["Female", "Male"]
-            sub = data.pairBySex(string(data.pairBySex.UR_Band) == "UR_1_3" & string(data.pairBySex.Phase) == "All" & string(data.pairBySex.Sex) == sx, :);
-            sub = sortrows(sub, 'Photoperiod_h');
-            if sx == "Female", col = pal.female; else, col = pal.male; end
-            plot(axD, 1:height(sub), sub.Mean_Delta_log10, '-o', 'Color', col, 'LineWidth', 2);
-            script8_direct_line_label_(axD, height(sub), sub.Mean_Delta_log10(end), char(sx), col, theme);
+    %% B — Absolute power UR 1–3 + UR 3–6 (+ CR reference)
+    figB = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
+    axB = axes(figB); hold(axB, 'on');
+    cr = data.absSummary(string(data.absSummary.BandName) == "CR_20_28" & string(data.absSummary.Phase) == "All", :);
+    cr = sortrows(cr, 'Photoperiod_h');
+    crErr = cr.SD_Log10 ./ sqrt(max(data.nMice, 1));
+    errorbar(axB, 1:height(cr), cr.Mean_Log10, crErr, '-s', 'Color', pal.cr, 'LineWidth', 1.5, ...
+        'MarkerFaceColor', pal.cr, 'CapSize', 6);
+    script8_direct_line_label_(axB, height(cr), cr.Mean_Log10(end), script8_band_display_('CR_20_28', 'tex'), pal.cr, theme, true);
+    for b = 1:numel(data.primaryUR)
+        bn = data.primaryUR(b);
+        ur = data.absSummary(string(data.absSummary.BandName) == bn & string(data.absSummary.Phase) == "All", :);
+        ur = sortrows(ur, 'Photoperiod_h');
+        col = script8_band_colour_(pal, bn);
+        urErr = ur.SD_Log10 ./ sqrt(max(data.nMice, 1));
+        errorbar(axB, 1:height(ur), ur.Mean_Log10, urErr, '-o', 'Color', col, 'LineWidth', 2, ...
+            'MarkerFaceColor', col, 'CapSize', 8);
+        script8_direct_line_label_(axB, height(ur), ur.Mean_Log10(end), script8_band_display_(bn, 'tex'), col, theme, true);
+    end
+    set(axB, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
+    xlabel(axB, 'Photoperiod', 'FontWeight', 'bold');
+    ylabel(axB, 'Mean log_{10} band power', 'FontWeight', 'bold');
+    title(axB, 'Absolute power: UR 1–3 and UR 3–6 (CR reference)', 'FontWeight', 'bold');
+    script8_style_axes_(axB, theme);
+    script8_panel_label_(axB, 'B', theme);
+    standPaths{2} = script8_export_figure_(figB, fullfile(standDir, 'Fig03_B_AbsPower'), theme, {theme.ext, '.pdf'});
+    close(figB);
+
+    %% C — Delta co-expression both primary URs
+    figC = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
+    axC = axes(figC); hold(axC, 'on');
+    for b = 1:numel(data.primaryUR)
+        bn = data.primaryUR(b);
+        sub = data.pairSummary(string(data.pairSummary.UR_Band) == bn & string(data.pairSummary.Phase) == "All", :);
+        sub = sortrows(sub, 'Photoperiod_h');
+        col = script8_band_colour_(pal, bn);
+        y = sub.Mean_Delta_log10;
+        x = 1:height(sub);
+        err = sub.SD_Delta_log10 ./ sqrt(max(data.nMice, 1));
+        errorbar(axC, x, y, err, '-o', 'Color', col, 'LineWidth', 2, 'MarkerFaceColor', col, 'CapSize', 8);
+        script8_direct_line_label_(axC, x(end), y(end), script8_band_display_(bn, 'tex'), col, theme, true);
+        if script8_lme_pp_sig_(data.lmeFdr, bn, 'Delta')
+            plot(axC, x(end), y(end), 'k*', 'MarkerSize', 8, 'HandleVisibility', 'off');
         end
     end
-    script8_yline_zero_(axD);
-    set(axD, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
-    xlabel(axD, 'Photoperiod', 'FontWeight', 'bold');
-    ylabel(axD, '\Delta(UR - CR) UR\_1\_3', 'FontWeight', 'bold');
-    title(axD, 'Sex-stratified \Delta (secondary)', 'FontWeight', 'bold');
-    script8_style_axes_(axD, theme);
-    script8_panel_label_(axD, 'D', theme);
-    standPaths{4} = script8_export_figure_(figD, fullfile(standDir, 'Fig02_D_Sex'), theme, {theme.ext, '.pdf'});
+    script8_yline_zero_(axC);
+    set(axC, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
+    xlabel(axC, 'Photoperiod', 'FontWeight', 'bold');
+    ylabel(axC, '\Delta(UR - CR) log_{10} power', 'FontWeight', 'bold');
+    title(axC, 'CR–UR co-expression across photoperiod', 'FontWeight', 'bold');
+    script8_style_axes_(axC, theme);
+    script8_panel_label_(axC, 'C', theme);
+    script8_add_n_annotation_(axC, data.nMice, [], theme);
+    xl = xlim(axC); yl = ylim(axC);
+    text(axC, xl(2), yl(1) + 0.08 * range(yl), 'L24: CR collapse \rightarrow UR > CR', ...
+        'HorizontalAlignment', 'right', 'FontName', theme.fontName, 'FontSize', 9, 'Color', pal.l24, 'Interpreter', 'tex');
+    standPaths{3} = script8_export_figure_(figC, fullfile(standDir, 'Fig03_C_Delta'), theme, {theme.ext, '.pdf'});
+    close(figC);
+
+    %% D — Sex-stratified for both primary URs (1x2 facets)
+    figD = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 1000 420]);
+    for bi = 1:numel(data.primaryUR)
+        axD = subplot(1, 2, bi); hold(axD, 'on');
+        bn = data.primaryUR(bi);
+        if ~isempty(data.pairBySex)
+            pooled = data.pairSummary(string(data.pairSummary.UR_Band) == bn & string(data.pairSummary.Phase) == "All", :);
+            pooled = sortrows(pooled, 'Photoperiod_h');
+            plot(axD, 1:height(pooled), pooled.Mean_Delta_log10, '--', 'Color', pal.pooled, 'LineWidth', 1.2);
+            for sx = ["Female", "Male"]
+                sub = data.pairBySex(string(data.pairBySex.UR_Band) == bn & string(data.pairBySex.Phase) == "All" & string(data.pairBySex.Sex) == sx, :);
+                sub = sortrows(sub, 'Photoperiod_h');
+                if sx == "Female", col = pal.female; else, col = pal.male; end
+                plot(axD, 1:height(sub), sub.Mean_Delta_log10, '-o', 'Color', col, 'LineWidth', 2, 'MarkerFaceColor', col);
+                script8_direct_line_label_(axD, height(sub), sub.Mean_Delta_log10(end), char(sx), col, theme, false);
+            end
+        end
+        script8_yline_zero_(axD);
+        set(axD, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
+        xlabel(axD, 'Photoperiod', 'FontWeight', 'bold');
+        if bi == 1
+            ylabel(axD, '\Delta(UR - CR) log_{10}', 'FontWeight', 'bold');
+            script8_panel_label_(axD, 'D', theme);
+        end
+        title(axD, ['Sex-stratified \Delta — ' script8_band_display_(bn, 'tex')], 'FontWeight', 'bold', 'Interpreter', 'tex');
+        script8_style_axes_(axD, theme);
+    end
+    standPaths{4} = script8_export_figure_(figD, fullfile(standDir, 'Fig03_D_Sex'), theme, {theme.ext, '.pdf'});
     close(figD);
 
-    for k = 1:4
-        manifest = script8_manifest_add_(manifest, 'Fig02', char('A' + k - 1), standPaths{k}{1}, 'standalone', ...
+    for k = 1:3
+        manifest = script8_manifest_add_(manifest, 'Fig03', char('A' + k - 1), standPaths{k}{1}, 'standalone', ...
             'Gradient CR–UR panel', 'Script 6', 'Tol contract', '');
     end
-    [widePath, tallPath] = script8_composite_from_paths_(standPaths, outDirs, 'Fig02_Gradient_CRUR', theme, [2 2], [16 9], [4 5]);
-    manifest = script8_manifest_add_(manifest, 'Fig02', 'Composite', widePath, '16:9', ...
-        'Photoperiod gradient of CR–UR co-expression with sex inset.', 'Script 6', 'Tol', '');
+    manifest = script8_manifest_add_(manifest, 'Fig03', 'D', standPaths{4}{1}, 'standalone', ...
+        'Sex-stratified \Delta (Supplementary)', 'Script 6', 'Tol sex', 'Moved off main composite.');
+    [widePath, tallPath] = script8_composite_fig03_(standPaths(1:3), outDirs, theme);
+    manifest = script8_manifest_add_(manifest, 'Fig03', 'Composite', widePath, '16:9', ...
+        'Photoperiod gradient of CR–UR co-expression with dual-band absolute power (sex in Supplementary).', ...
+        'Script 6', 'Tol', 'Main A–C only.');
 end
 
-%% Fig 3
-function [manifest, widePath, tallPath, standPaths] = script8_build_fig03_(data, outDirs, theme, cfg, manifest)
+function [widePath, tallPath] = script8_composite_fig03_(standPaths, outDirs, theme)
+    imgs = cell(3, 1);
+    for i = 1:3
+        p = standPaths{i}; if iscell(p), p = p{1}; end
+        imgs{i} = script8_trim_image_whitespace_(imread(p));
+    end
+    figW = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1600 900]);
+    tl = tiledlayout(figW, 2, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+    nexttile(tl, 1); imshow(imgs{1}); axis off;
+    nexttile(tl, 2); imshow(imgs{2}); axis off;
+    nexttile(tl, 3, [1 2]); imshow(imgs{3}); axis off;
+    widePath = fullfile(outDirs.compositeWide, ['Fig03_Gradient_CRUR' theme.ext]);
+    exportgraphics(figW, widePath, 'Resolution', theme.dpi);
+    close(figW);
+
+    figT = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1000 1400]);
+    tl2 = tiledlayout(figT, 3, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+    for i = 1:3
+        nexttile(tl2, i); imshow(imgs{i}); axis off;
+    end
+    tallPath = fullfile(outDirs.compositeTall, ['Fig03_Gradient_CRUR' theme.ext]);
+    exportgraphics(figT, tallPath, 'Resolution', theme.dpi);
+    close(figT);
+end
+
+%% Fig04 — Transitions: C coherence hero, then A|B summary gradients
+function [manifest, widePath, tallPath, standPaths] = script8_build_fig04_(data, outDirs, theme, cfg, manifest) %#ok<INUSD>
     pal = theme.palette;
-    standDir = fullfile(outDirs.standalone, 'Fig03_Transitions');
+    standDir = fullfile(outDirs.standalone, 'Fig04_Transitions');
     extended_period_gate_ensure_dir(standDir);
-    standPaths = cell(4, 1);
+    standPaths = cell(3, 1);
     pp = data.ppOrder;
     ppPlot = pp(pp <= 22);
-    ppLabels = arrayfun(@(x) char(script8_pp_label_(x)), ppPlot, 'UniformOutput', false);
 
     grad = data.resyncGradient;
-    if isempty(grad)
-        grad = table();
-    end
+    if isempty(grad), grad = table(); end
 
-    %% A — Ridge power gradient
+    %% A — ridge power flip
     figA = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
     axA = axes(figA); hold(axA, 'on');
     script8_plot_transition_metric_(axA, grad, data.primaryUR, 'RidgePower_PostMinusPre', ppPlot, pal, theme);
     xlabel(axA, 'Photoperiod', 'FontWeight', 'bold');
     ylabel(axA, 'Ridge power post - pre', 'FontWeight', 'bold');
-    title(axA, 'Transition-locked ridge power change', 'FontWeight', 'bold');
+    title(axA, 'UR ridge amplitude flip at transition', 'FontWeight', 'bold');
     script8_style_axes_(axA, theme);
     script8_panel_label_(axA, 'A', theme);
     script8_add_n_annotation_(axA, data.nMice, [], theme);
-    standPaths{1} = script8_export_figure_(figA, fullfile(standDir, 'Fig03_A_RidgePowerGrad'), theme, {theme.ext, '.pdf'});
+    text(axA, 0.98, 0.12, 'Stops at L22 (no entrained transition at LL)', 'Units', 'normalized', ...
+        'HorizontalAlignment', 'right', 'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35]);
+    standPaths{1} = script8_export_figure_(figA, fullfile(standDir, 'Fig04_A_RidgePowerGrad'), theme, {theme.ext, '.pdf'});
     close(figA);
 
-    %% B — DeltaR gradient
+    %% B — phase concentration flip (\Delta R)
     figB = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
     axB = axes(figB); hold(axB, 'on');
     script8_plot_transition_metric_(axB, grad, data.primaryUR, 'DeltaR', ppPlot, pal, theme);
     xlabel(axB, 'Photoperiod', 'FontWeight', 'bold');
     ylabel(axB, '\DeltaR (post - pre)', 'FontWeight', 'bold');
-    title(axB, 'Transition phase resynchronisation (\DeltaR)', 'FontWeight', 'bold');
+    title(axB, 'UR phase organisation flip (\DeltaR)', 'FontWeight', 'bold');
     script8_style_axes_(axB, theme);
     script8_panel_label_(axB, 'B', theme);
-    standPaths{2} = script8_export_figure_(figB, fullfile(standDir, 'Fig03_B_DeltaRGrad'), theme, {theme.ext, '.pdf'});
+    standPaths{2} = script8_export_figure_(figB, fullfile(standDir, 'Fig04_B_DeltaRGrad'), theme, {theme.ext, '.pdf'});
     close(figB);
 
-    %% C — Faceted coherence L12 | L22 | L24 / LL endpoint note
-    figC = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 1200 420]);
+    %% C — 2x3 facets L12–L22 for UR 1–3 (shared auto ylim; white faces)
+    figC = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1400 780]);
     facets = pal.coherenceFacets;
+    yMax = script8_coherence_ymax_(data.binnedCoherence, facets, data.primaryUR(1), pal);
     for fi = 1:numel(facets)
-        axC = subplot(1, numel(facets), fi); hold(axC, 'on');
-        hasFacet = script8_plot_coherence_facet_(axC, data.binnedCoherence, facets(fi), data.primaryUR(1), pal, theme);
-        if hasFacet
-            title(axC, char(script8_pp_label_(facets(fi))), 'FontWeight', 'bold');
-        else
+        axC = subplot(2, 3, fi); hold(axC, 'on');
+        set(axC, 'Color', 'w');
+        hasFacet = script8_plot_coherence_facet_(axC, data.binnedCoherence, facets(fi), data.primaryUR(1), pal, theme, false);
+        title(axC, char(script8_pp_label_(facets(fi))), 'FontWeight', 'bold');
+        if ~hasFacet
             script8_plot_empty_coherence_note_(axC, facets(fi), theme);
-            title(axC, 'L24 / LL', 'FontWeight', 'bold');
         end
-        if fi == 1
+        if fi == 1 || fi == 4
             ylabel(axC, 'Phase coherence R', 'FontWeight', 'bold');
         end
-        if fi == 2
+        if fi >= 4
             xlabel(axC, 'Time relative to transition (h)', 'FontWeight', 'bold');
         end
         if fi == 1
             script8_panel_label_(axC, 'C', theme);
         end
-        set(axC, 'YLim', [0 pal.coherenceYMax], 'XLim', pal.coherenceXlim);
+        set(axC, 'YLim', [0 yMax], 'XLim', pal.coherenceXlim, 'Color', 'w');
         script8_style_axes_(axC, theme);
     end
-    sgtitle(figC, 'DL/LD phase coherence (UR\_1\_3; transition facets stop at entrained photoperiods)', ...
-        'FontWeight', 'bold', 'FontName', theme.fontName);
-    standPaths{3} = script8_export_figure_(figC, fullfile(standDir, 'Fig03_C_CoherenceFacets'), theme, {theme.ext, '.pdf'});
+    sgtitle(figC, ['DL/LD phase coherence (' script8_band_display_(data.primaryUR(1), 'tex') ...
+        '; L12–L22 entrained photoperiods)'], 'FontWeight', 'bold', 'FontName', theme.fontName, 'Interpreter', 'tex');
+    standPaths{3} = script8_export_figure_(figC, fullfile(standDir, 'Fig04_C_CoherenceFacets'), theme, {theme.ext, '.pdf'});
     close(figC);
 
-    %% D — Ridge power FDR heatmap
-    figD = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
-    axD = axes(figD);
-    script8_plot_ridge_heatmap_(axD, data.ridgePowerFdr, pal, theme);
-    title(axD, 'LD ridge power change (FDR-significant cells only)', 'FontWeight', 'bold');
+    for k = 1:3
+        manifest = script8_manifest_add_(manifest, 'Fig04', char('A' + k - 1), standPaths{k}{1}, 'standalone', ...
+            'Transition dynamics panel', 'Script 5', 'Tol DL/LD', '');
+    end
+    [widePath, tallPath] = script8_composite_fig04_(standPaths, outDirs, theme);
+    manifest = script8_manifest_add_(manifest, 'Fig04', 'Composite', widePath, '16:9', ...
+        'Transition coherence hero (C) with ridge-power and \DeltaR summary gradients (A|B).', ...
+        'Script 5', 'Tol', 'C-first layout; shared auto ylim; no grey facet fills.');
+end
+
+function [widePath, tallPath] = script8_composite_fig04_(standPaths, outDirs, theme)
+    imgs = cell(3, 1);
+    for i = 1:3
+        p = standPaths{i}; if iscell(p), p = p{1}; end
+        imgs{i} = script8_trim_image_whitespace_(imread(p));
+    end
+    % Wide: C on top full width, A|B below
+    figW = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1600 1000]);
+    tl = tiledlayout(figW, 2, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+    nexttile(tl, 1, [1 2]); imshow(imgs{3}); axis off;
+    nexttile(tl, 3); imshow(imgs{1}); axis off;
+    nexttile(tl, 4); imshow(imgs{2}); axis off;
+    widePath = fullfile(outDirs.compositeWide, ['Fig04_Transitions' theme.ext]);
+    exportgraphics(figW, widePath, 'Resolution', theme.dpi);
+    close(figW);
+
+    % Tall primary: C, then A, then B
+    figT = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1000 1400]);
+    tl2 = tiledlayout(figT, 3, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
+    nexttile(tl2, 1); imshow(imgs{3}); axis off;
+    nexttile(tl2, 2); imshow(imgs{1}); axis off;
+    nexttile(tl2, 3); imshow(imgs{2}); axis off;
+    tallPath = fullfile(outDirs.compositeTall, ['Fig04_Transitions' theme.ext]);
+    exportgraphics(figT, tallPath, 'Resolution', theme.dpi);
+    close(figT);
+end
+
+%% Fig05 — Cluster callouts + transition-aligned activity resync
+function [manifest, widePath, tallPath, standPaths] = script8_build_fig05_(data, outDirs, theme, cfg, manifest) %#ok<INUSD>
+    pal = theme.palette;
+    standDir = fullfile(outDirs.standalone, 'Fig05_ActivityResync');
+    extended_period_gate_ensure_dir(standDir);
+    standPaths = cell(4, 1);
+
+    primaryBand = data.primaryUR(1);
+    primaryCluster = script8_primary_cluster_(data.clusterSummary, primaryBand);
+
+    %% A — Cluster period callouts (lines at actual PeriodCentre_h)
+    figA = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
+    axA = axes(figA); hold(axA, 'on');
+    CS = data.clusterSummary;
+    if ~isempty(CS) && all(ismember({'PeriodCentre_h', 'CandidateCount', 'BandName'}, CS.Properties.VariableNames))
+        centres = double(CS.PeriodCentre_h);
+        counts = double(CS.CandidateCount);
+        for i = 1:numel(centres)
+            bn = string(CS.BandName(i));
+            col = script8_band_colour_(pal, bn);
+            bar(axA, centres(i), counts(i), 0.32, 'FaceColor', col, 'EdgeColor', 'k', 'LineWidth', 1);
+            xline(axA, centres(i), '--', 'Color', col, 'LineWidth', 1.0, 'HandleVisibility', 'off');
+            nMiceTxt = '';
+            if ismember('MouseCount', CS.Properties.VariableNames)
+                nMiceTxt = sprintf('; %d mice', double(CS.MouseCount(i)));
+            end
+            text(axA, centres(i), counts(i) + max(counts) * 0.04, ...
+                sprintf('%s\nn=%d candidates%s', script8_band_display_(bn, 'plain'), counts(i), nMiceTxt), ...
+                'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 8, 'Interpreter', 'none');
+        end
+        xlim(axA, [min(centres) - 0.55, max(centres) + 0.55]);
+    end
+    xlabel(axA, 'Validated ridge period (h)', 'FontWeight', 'bold');
+    ylabel(axA, 'Validated candidates', 'FontWeight', 'bold');
+    title(axA, 'Validated period clusters (UR 1–3 and UR 3–6)', 'FontWeight', 'bold');
+    script8_style_axes_(axA, theme);
+    script8_panel_label_(axA, 'A', theme);
+    standPaths{1} = script8_export_figure_(figA, fullfile(standDir, 'Fig05_A_Clusters'), theme, {theme.ext, '.pdf'});
+    close(figA);
+
+    %% B — L12 transition-aligned activity (LD primary | DL secondary)
+    figB = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1100 420]);
+    axB1 = subplot(1, 2, 1); hold(axB1, 'on'); set(axB1, 'Color', 'w');
+    script8_plot_transition_activity_(axB1, data.activityZT, primaryCluster, 12, "LD", pal, theme, true);
+    title(axB1, 'L12 — LD (lights-off)', 'FontWeight', 'bold');
+    ylabel(axB1, 'Activity (z-scored)', 'FontWeight', 'bold');
+    script8_panel_label_(axB1, 'B', theme);
+    axB2 = subplot(1, 2, 2); hold(axB2, 'on'); set(axB2, 'Color', 'w');
+    script8_plot_transition_activity_(axB2, data.activityZT, primaryCluster, 12, "DL", pal, theme, true);
+    title(axB2, 'L12 — DL (lights-on)', 'FontWeight', 'bold');
+    xlabel(axB1, 'Time relative to transition (h)', 'FontWeight', 'bold');
+    xlabel(axB2, 'Time relative to transition (h)', 'FontWeight', 'bold');
+    sgtitle(figB, sprintf('Transition-aligned activity — %s (%s)', ...
+        script8_band_display_(primaryBand, 'plain'), char(primaryCluster)), ...
+        'FontWeight', 'bold', 'FontName', theme.fontName, 'Interpreter', 'none');
+    standPaths{2} = script8_export_figure_(figB, fullfile(standDir, 'Fig05_B_Activity_L12'), theme, {theme.ext, '.pdf'});
+    close(figB);
+
+    %% C — L22 transition-aligned activity
+    figC = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1100 420]);
+    axC1 = subplot(1, 2, 1); hold(axC1, 'on'); set(axC1, 'Color', 'w');
+    script8_plot_transition_activity_(axC1, data.activityZT, primaryCluster, 22, "LD", pal, theme, true);
+    title(axC1, 'L22 — LD (lights-off)', 'FontWeight', 'bold');
+    ylabel(axC1, 'Activity (z-scored)', 'FontWeight', 'bold');
+    script8_panel_label_(axC1, 'C', theme);
+    axC2 = subplot(1, 2, 2); hold(axC2, 'on'); set(axC2, 'Color', 'w');
+    script8_plot_transition_activity_(axC2, data.activityZT, primaryCluster, 22, "DL", pal, theme, true);
+    title(axC2, 'L22 — DL (lights-on)', 'FontWeight', 'bold');
+    xlabel(axC1, 'Time relative to transition (h)', 'FontWeight', 'bold');
+    xlabel(axC2, 'Time relative to transition (h)', 'FontWeight', 'bold');
+    sgtitle(figC, sprintf('Transition-aligned activity — %s (%s)', ...
+        script8_band_display_(primaryBand, 'plain'), char(primaryCluster)), ...
+        'FontWeight', 'bold', 'FontName', theme.fontName, 'Interpreter', 'none');
+    standPaths{3} = script8_export_figure_(figC, fullfile(standDir, 'Fig05_C_Activity_L22'), theme, {theme.ext, '.pdf'});
+    close(figC);
+
+    %% D — Dual-band mean overlay at L12 LD
+    figD = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 720 480]);
+    axD = axes(figD); hold(axD, 'on'); set(axD, 'Color', 'w');
+    for bi = 1:numel(data.primaryUR)
+        bn = data.primaryUR(bi);
+        cid = script8_primary_cluster_(data.clusterSummary, bn);
+        col = script8_band_colour_(pal, bn);
+        script8_plot_transition_activity_mean_(axD, data.activityZT, cid, 12, "LD", col, theme, ...
+            script8_band_display_(bn, 'tex'));
+    end
+    xline(axD, 0, '-', 'Color', [0.25 0.25 0.25], 'LineWidth', 1.4, 'HandleVisibility', 'off');
+    yline(axD, 0, ':', 'Color', [0.45 0.45 0.45], 'HandleVisibility', 'off');
+    xlim(axD, pal.coherenceXlim);
+    xlabel(axD, 'Time relative to LD (h)', 'FontWeight', 'bold');
+    ylabel(axD, 'Mean activity (z-scored)', 'FontWeight', 'bold');
+    title(axD, 'Dual-band mean activity at L12 LD', 'FontWeight', 'bold');
+    script8_style_axes_(axD, theme);
     script8_panel_label_(axD, 'D', theme);
-    standPaths{4} = script8_export_figure_(figD, fullfile(standDir, 'Fig03_D_Heatmap'), theme, {theme.ext, '.pdf'});
+    standPaths{4} = script8_export_figure_(figD, fullfile(standDir, 'Fig05_D_DualBand_L12_LD'), theme, {theme.ext, '.pdf'});
     close(figD);
 
     for k = 1:4
-        manifest = script8_manifest_add_(manifest, 'Fig03', char('A' + k - 1), standPaths{k}{1}, 'standalone', ...
-            'Transition dynamics panel', 'Script 5', 'Tol DL/LD + diverging heatmap', '');
+        manifest = script8_manifest_add_(manifest, 'Fig05', char('A' + k - 1), standPaths{k}{1}, 'standalone', ...
+            'Cluster-anchored activity resync', 'Scripts 7/8', 'Tol', '');
     end
-    [widePath, tallPath] = script8_composite_from_paths_(standPaths, outDirs, 'Fig03_Transitions', theme, [2 2], [16 9], [4 5]);
-    manifest = script8_manifest_add_(manifest, 'Fig03', 'Composite', widePath, '16:9', ...
-        'Transition-locked ultradian dynamics across photoperiod.', 'Script 5', 'Tol', ...
-        'Panel C shows L12 and L22 coherence plus LL endpoint note because transition coherence is undefined at L24.');
+    [widePath, tallPath] = script8_composite_from_paths_(standPaths, outDirs, 'Fig05_ActivityResync', theme, [2 2], [16 9], [4 5]);
+    manifest = script8_manifest_add_(manifest, 'Fig05', 'Composite', widePath, '16:9', ...
+        'Cluster-anchored transition activity resync (grey individuals, thick mean); replaces prior coherence-repeat Fig05.', ...
+        'Scripts 7/8', 'Tol', 'LD primary | DL secondary; L12 vs L22.');
+end
+
+function cid = script8_primary_cluster_(CS, bandName)
+    cid = "";
+    if isempty(CS) || ~ismember('BandName', CS.Properties.VariableNames)
+        return;
+    end
+    sub = CS(string(CS.BandName) == string(bandName), :);
+    if isempty(sub), return; end
+    if ismember('ClusterRank', sub.Properties.VariableNames)
+        sub = sortrows(sub, 'ClusterRank', 'ascend');
+    elseif ismember('CandidateCount', sub.Properties.VariableNames)
+        sub = sortrows(sub, 'CandidateCount', 'descend');
+    end
+    cid = string(sub.ClusterID(1));
+end
+
+function script8_plot_transition_activity_(ax, Act, clusterID, photo, transitionType, pal, theme, showIndividuals)
+    if isempty(Act) || strlength(string(clusterID)) == 0
+        text(ax, 0.5, 0.5, 'No activity data', 'Units', 'normalized', ...
+            'HorizontalAlignment', 'center', 'FontName', theme.fontName);
+        return;
+    end
+    needed = {'ClusterID', 'Photoperiod_h', 'SignalID', 'ZTBinCenter_h', 'Activity_zscored'};
+    if ~all(ismember(needed, Act.Properties.VariableNames))
+        text(ax, 0.5, 0.5, 'Activity table missing columns', 'Units', 'normalized', ...
+            'HorizontalAlignment', 'center', 'FontName', theme.fontName);
+        return;
+    end
+    A = Act(string(Act.ClusterID) == string(clusterID) & Act.Photoperiod_h == photo, :);
+    if isempty(A)
+        text(ax, 0.5, 0.5, sprintf('No rows for %s / L%d', char(clusterID), photo), ...
+            'Units', 'normalized', 'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'Interpreter', 'none');
+        return;
+    end
+    transitionZT = 0;
+    if upper(string(transitionType)) == "LD"
+        transitionZT = double(photo);
+    end
+    xlimRange = theme.palette.coherenceXlim;
+    meanCol = theme.palette.ld;
+    if upper(string(transitionType)) == "DL"
+        meanCol = theme.palette.dl;
+    end
+    hold(ax, 'on');
+    if ~ismember('File', A.Properties.VariableNames)
+        A.File = repmat("", height(A), 1);
+    end
+    mouseKey = string(A.File) + "|" + string(A.SignalID);
+    sigs = unique(mouseKey, 'stable');
+    mouseRel = {};
+    mouseY = {};
+    for s = 1:numel(sigs)
+        As = A(mouseKey == sigs(s), :);
+        As = sortrows(As, 'ZTBinCenter_h');
+        zt = double(As.ZTBinCenter_h);
+        y = double(As.Activity_zscored);
+        rel = mod(zt - transitionZT + 12, 24) - 12;
+        [rel, ord] = sort(rel);
+        y = y(ord);
+        keep = rel >= xlimRange(1) & rel <= xlimRange(2) & isfinite(y);
+        if ~any(keep), continue; end
+        if showIndividuals
+            plot(ax, rel(keep), y(keep), '-', 'Color', [0.70 0.70 0.70], 'LineWidth', 0.85, 'HandleVisibility', 'off');
+        end
+        mouseRel{end+1,1} = rel(keep); %#ok<AGROW>
+        mouseY{end+1,1} = y(keep); %#ok<AGROW>
+    end
+    if ~isempty(mouseRel)
+        edges = xlimRange(1):0.5:xlimRange(2);
+        centers = edges(1:end-1) + diff(edges)/2;
+        meanY = nan(size(centers));
+        for i = 1:numel(centers)
+            vals = nan(numel(mouseRel), 1);
+            for m = 1:numel(mouseRel)
+                idx = mouseRel{m} >= edges(i) & mouseRel{m} < edges(i+1);
+                if i == numel(centers)
+                    idx = mouseRel{m} >= edges(i) & mouseRel{m} <= edges(i+1);
+                end
+                if any(idx)
+                    vals(m) = mean(mouseY{m}(idx), 'omitnan');
+                end
+            end
+            meanY(i) = mean(vals, 'omitnan');
+        end
+        plot(ax, centers, meanY, '-', 'Color', meanCol, 'LineWidth', 2.6);
+    end
+    xline(ax, 0, '-', 'Color', [0.25 0.25 0.25], 'LineWidth', 1.4, 'HandleVisibility', 'off');
+    yline(ax, 0, ':', 'Color', [0.45 0.45 0.45], 'HandleVisibility', 'off');
+    xlim(ax, xlimRange);
+    script8_style_axes_(ax, theme);
+end
+
+function script8_plot_transition_activity_mean_(ax, Act, clusterID, photo, transitionType, colour, theme, labelTxt)
+    if isempty(Act) || strlength(string(clusterID)) == 0, return; end
+    needed = {'ClusterID', 'Photoperiod_h', 'SignalID', 'ZTBinCenter_h', 'Activity_zscored'};
+    if ~all(ismember(needed, Act.Properties.VariableNames)), return; end
+    A = Act(string(Act.ClusterID) == string(clusterID) & Act.Photoperiod_h == photo, :);
+    if isempty(A), return; end
+    transitionZT = 0;
+    if upper(string(transitionType)) == "LD"
+        transitionZT = double(photo);
+    end
+    xlimRange = theme.palette.coherenceXlim;
+    if ~ismember('File', A.Properties.VariableNames)
+        A.File = repmat("", height(A), 1);
+    end
+    mouseKey = string(A.File) + "|" + string(A.SignalID);
+    sigs = unique(mouseKey, 'stable');
+    mouseRel = {};
+    mouseY = {};
+    for s = 1:numel(sigs)
+        As = A(mouseKey == sigs(s), :);
+        zt = double(As.ZTBinCenter_h);
+        y = double(As.Activity_zscored);
+        rel = mod(zt - transitionZT + 12, 24) - 12;
+        keep = isfinite(rel) & isfinite(y) & rel >= xlimRange(1) & rel <= xlimRange(2);
+        if ~any(keep), continue; end
+        mouseRel{end+1,1} = rel(keep); %#ok<AGROW>
+        mouseY{end+1,1} = y(keep); %#ok<AGROW>
+    end
+    if isempty(mouseRel), return; end
+    edges = xlimRange(1):0.5:xlimRange(2);
+    centers = edges(1:end-1) + diff(edges)/2;
+    meanY = nan(size(centers));
+    for i = 1:numel(centers)
+        vals = nan(numel(mouseRel), 1);
+        for m = 1:numel(mouseRel)
+            idx = mouseRel{m} >= edges(i) & mouseRel{m} < edges(i+1);
+            if i == numel(centers)
+                idx = mouseRel{m} >= edges(i) & mouseRel{m} <= edges(i+1);
+            end
+            if any(idx)
+                vals(m) = mean(mouseY{m}(idx), 'omitnan');
+            end
+        end
+        meanY(i) = mean(vals, 'omitnan');
+    end
+    plot(ax, centers, meanY, '-', 'Color', colour, 'LineWidth', 2.4);
+    if any(isfinite(meanY))
+        ip = find(isfinite(meanY), 1, 'last');
+        script8_direct_line_label_(ax, centers(ip), meanY(ip), labelTxt, colour, theme, true);
+    end
+end
+
+function yMax = script8_coherence_ymax_(Bin, facets, bandName, pal)
+    yMax = pal.coherenceYMax;
+    if isempty(Bin) || ~ismember('R', Bin.Properties.VariableNames)
+        return;
+    end
+    B = Bin(ismember(Bin.Photoperiod_h, facets) & string(Bin.BandName) == string(bandName), :);
+    if isempty(B), return; end
+    mx = max(double(B.R), [], 'omitnan');
+    if isfinite(mx) && mx > 0
+        yMax = max(ceil(mx * 1.05 * 20) / 20, 0.2); % neat ceiling ~0.05 steps
+    end
+end
+
+function script8_plot_binned_ridge_(ax, Bin, bandName, photos, pal, theme)
+    if isempty(Bin), return; end
+    hold(ax, 'on');
+    cols = {pal.l12, pal.l24};
+    for i = 1:numel(photos)
+        B = Bin(Bin.Photoperiod_h == photos(i) & string(Bin.BandName) == bandName & ...
+            (string(Bin.TransitionType) == "LD" | string(Bin.TransitionType) == "DL"), :);
+        if isempty(B) || ~ismember('MeanRidgePower_log10', B.Properties.VariableNames)
+            continue;
+        end
+        % Average LD and DL within relative-time bins for a single photoperiod trace
+        B = sortrows(B, 'RelBinCenter_h');
+        G = groupsummary(B, 'RelBinCenter_h', 'mean', 'MeanRidgePower_log10');
+        mcol = "mean_MeanRidgePower_log10";
+        if ~ismember(mcol, G.Properties.VariableNames)
+            vn = G.Properties.VariableNames(startsWith(G.Properties.VariableNames, 'mean_'));
+            if isempty(vn), continue; end
+            mcol = string(vn{1});
+        end
+        plot(ax, G.RelBinCenter_h, G.(mcol), '-', 'Color', cols{i}, 'LineWidth', 2.0);
+        script8_direct_line_label_(ax, G.RelBinCenter_h(end), G.(mcol)(end), ...
+            char(script8_pp_label_(photos(i))), cols{i}, theme, false);
+    end
+    xline(ax, 0, ':', 'Color', [0.4 0.4 0.4], 'LineWidth', 1.2, 'HandleVisibility', 'off');
+    xlim(ax, theme.palette.coherenceXlim);
 end
 
 function script8_plot_transition_metric_(ax, grad, bands, metricName, ppPlot, pal, theme)
@@ -413,18 +830,19 @@ function script8_plot_transition_metric_(ax, grad, bands, metricName, ppPlot, pa
         plot(ax, x, vals, '-o', 'Color', col, 'LineWidth', 2.2, 'MarkerSize', 7, 'MarkerFaceColor', col);
         if any(isfinite(vals))
             ip = find(isfinite(vals), 1, 'last');
-            script8_direct_line_label_(ax, ip, vals(ip), char(tr), col, theme);
+            script8_direct_line_label_(ax, ip, vals(ip), char(tr), col, theme, false);
         end
     end
 end
 
-function hasData = script8_plot_coherence_facet_(ax, Bin, photoperiod_h, bandName, pal, theme)
+function hasData = script8_plot_coherence_facet_(ax, Bin, photoperiod_h, bandName, pal, theme, doShade)
+    if nargin < 7, doShade = false; end
     hasData = false;
     if isempty(Bin), return; end
     B = Bin(Bin.Photoperiod_h == photoperiod_h & string(Bin.BandName) == bandName, :);
     if isempty(B), return; end
     hold(ax, 'on');
-    ylSet = false;
+    set(ax, 'Color', 'w');
     for tr = ["DL", "LD"]
         Bt = B(string(B.TransitionType) == tr, :);
         if isempty(Bt), continue; end
@@ -433,157 +851,35 @@ function hasData = script8_plot_coherence_facet_(ax, Bin, photoperiod_h, bandNam
         col = script8_transition_colour_(pal, tr);
         x = Bt.RelBinCenter_h;
         y = Bt.R;
-        plot(ax, x, y, '-o', 'Color', col, 'LineWidth', 2.2, 'MarkerSize', 5, 'MarkerFaceColor', col);
+        plot(ax, x, y, '-o', 'Color', col, 'LineWidth', 2.0, 'MarkerSize', 4, 'MarkerFaceColor', col);
         if ismember('N_PhaseObs', Bt.Properties.VariableNames)
             se = 1.96 ./ sqrt(max(Bt.N_PhaseObs, 1));
-            fill(ax, [x; flipud(x)], [y - se; flipud(y + se)], col, 'FaceAlpha', 0.15, 'EdgeColor', 'none');
+            fill(ax, [x; flipud(x)], [y - se; flipud(y + se)], col, 'FaceAlpha', 0.12, 'EdgeColor', 'none');
         end
-        script8_direct_line_label_(ax, x(end), y(end), char(tr), col, theme);
-        if ~ylSet
-            ylim(ax, [0 pal.coherenceYMax]);
-            ylSet = true;
+        if x(end) > 3
+            script8_direct_line_label_(ax, x(end), y(end), char(tr), col, theme, false);
         end
-        script8_shade_transition_(ax, pal.coherenceXlim, tr == "DL", pal);
+        if doShade
+            script8_shade_transition_(ax, pal.coherenceXlim, tr == "DL", pal);
+        end
     end
-    xline(ax, 0, ':', 'Color', [0.4 0.4 0.4], 'LineWidth', 1.2, 'HandleVisibility', 'off');
+    xline(ax, 0, '-', 'Color', [0.25 0.25 0.25], 'LineWidth', 1.3, 'HandleVisibility', 'off');
     script8_style_axes_(ax, theme);
 end
 
 function script8_plot_empty_coherence_note_(ax, photoperiod_h, theme)
-    axis(ax, [0 1 0 1]);
-    axis(ax, 'off');
-    text(ax, 0.5, 0.66, sprintf('No transition coherence for %s', char(script8_pp_label_(photoperiod_h))), ...
-        'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontWeight', 'bold', 'FontSize', 11);
-    text(ax, 0.5, 0.47, 'LL has no entrained lights-on/off boundary,', ...
-        'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 10);
-    text(ax, 0.5, 0.37, 'so DL/LD pre/post coherence is undefined.', ...
-        'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 10);
+    axis(ax, [0 1 0 1]); axis(ax, 'off');
+    text(ax, 0.5, 0.55, sprintf('No data for %s', char(script8_pp_label_(photoperiod_h))), ...
+        'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontWeight', 'bold', 'FontSize', 10);
 end
 
-function script8_plot_ridge_heatmap_(ax, RP, pal, theme)
-    if isempty(RP), return; end
-    bands = pal.allUR;
-    pp = unique(double(RP.Photoperiod_h)); pp = sort(pp(pp <= 22));
-    M = nan(numel(bands), numel(pp));
-    Sig = false(numel(bands), numel(pp));
-    for bi = 1:numel(bands)
-        for pi = 1:numel(pp)
-            idx = RP.Photoperiod_h == pp(pi) & string(RP.BandName) == bands(bi) & string(RP.TransitionType) == "LD";
-            if any(idx) && ismember('MeanDifference_PostMinusPre', RP.Properties.VariableNames)
-                row = RP(find(idx, 1), :);
-                isSig = ismember('Significant_BH', row.Properties.VariableNames) && logical(row.Significant_BH(1));
-                if isSig
-                    M(bi, pi) = row.MeanDifference_PostMinusPre(1);
-                    Sig(bi, pi) = true;
-                end
-            end
-        end
-    end
-    imagesc(ax, M);
-    colormap(ax, script8_diverging_cmap_());
-    cb = colorbar(ax);
-    cb.Label.String = 'LD mean difference (post - pre)';
-    set(ax, 'XTick', 1:numel(pp), 'XTickLabel', arrayfun(@(x) char(script8_pp_label_(x)), pp, 'UniformOutput', false), ...
-        'YTick', 1:numel(bands), 'YTickLabel', cellstr(bands));
-    hold(ax, 'on');
-    for bi = 1:numel(bands)
-        for pi = 1:numel(pp)
-            if Sig(bi, pi)
-                text(ax, pi, bi, '*', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
-                    'FontWeight', 'bold', 'FontSize', 11, 'Color', [0.15 0.15 0.15]);
-            end
-        end
-    end
-    script8_style_axes_(ax, theme);
-end
-
-%% Fig 4
-function [manifest, widePath, tallPath, standPaths] = script8_build_fig04_(data, paths, outDirs, theme, cfg, manifest)
-    pal = theme.palette;
-    standDir = fullfile(outDirs.standalone, 'Fig04_Mechanistic');
-    extended_period_gate_ensure_dir(standDir);
-    standPaths = cell(4, 1);
-
-    %% A — Cluster support by validated period cluster
-    figA = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
-    axA = axes(figA); hold(axA, 'on');
-    CS = data.clusterSummary;
-    if ~isempty(CS) && all(ismember({'PeriodCentre_h', 'CandidateCount', 'BandName'}, CS.Properties.VariableNames))
-        centres = double(CS.PeriodCentre_h);
-        counts = double(CS.CandidateCount);
-        for i = 1:numel(centres)
-            col = script8_band_colour_(pal, string(CS.BandName(i)));
-            bar(axA, centres(i), counts(i), 0.32, 'FaceColor', col, 'EdgeColor', 'k', 'LineWidth', 1);
-            text(axA, centres(i), counts(i) + max(counts) * 0.03, sprintf('n=%d', counts(i)), ...
-                'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 9);
-        end
-        xline(axA, 2, '--', 'Color', script8_band_colour_(pal, 'UR_1_3'), 'LineWidth', 1.2, 'HandleVisibility', 'off');
-        xline(axA, 4.5, '--', 'Color', script8_band_colour_(pal, 'UR_3_6'), 'LineWidth', 1.2, 'HandleVisibility', 'off');
-        xlim(axA, [min(centres) - 0.45, max(centres) + 0.45]);
-    end
-    xlabel(axA, 'Validated ridge period (h)', 'FontWeight', 'bold');
-    ylabel(axA, 'Validated candidates', 'FontWeight', 'bold');
-    title(axA, 'Validated period clusters (weighted by candidate count)', 'FontWeight', 'bold');
-    script8_style_axes_(axA, theme);
-    script8_panel_label_(axA, 'A', theme);
-    standPaths{1} = script8_export_figure_(figA, fullfile(standDir, 'Fig04_A_Clusters'), theme, {theme.ext, '.pdf'});
-    close(figA);
-
-    %% B — 24h phase L12 vs L24
-    figB = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
-    axB = axes(figB); hold(axB, 'on');
-    script8_plot_24h_profile_(axB, data.phase24, 'R', [12 24], pal, theme, 'Phase coherence R');
-    title(axB, '24h phase coherence (UR\_1\_3)', 'FontWeight', 'bold');
-    script8_panel_label_(axB, 'B', theme);
-    standPaths{2} = script8_export_figure_(figB, fullfile(standDir, 'Fig04_B_Phase24h'), theme, {theme.ext, '.pdf'});
-    close(figB);
-
-    %% C — 24h ridge power
-    figC = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
-    axC = axes(figC); hold(axC, 'on');
-    script8_plot_24h_profile_(axC, data.ridge24, 'MeanRidgePower_log10', [12 24], pal, theme, 'Ridge power (log_{10})');
-    title(axC, '24h ridge power (UR\_1\_3)', 'FontWeight', 'bold');
-    script8_panel_label_(axC, 'C', theme);
-    standPaths{3} = script8_export_figure_(figC, fullfile(standDir, 'Fig04_C_Ridge24h'), theme, {theme.ext, '.pdf'});
-    close(figC);
-
-    %% D — Retention by band
-    figD = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
-    axD = axes(figD); hold(axD, 'on');
-    R = data.retention;
-    if ~isempty(R)
-        bn = string(R.BandName);
-        retCol = R.Properties.VariableNames{contains(R.Properties.VariableNames, 'RetentionPct_Elig', 'IgnoreCase', true)};
-        y = double(R.(retCol));
-        cols = arrayfun(@(i) script8_band_colour_(pal, bn(i)), 1:numel(bn), 'UniformOutput', false);
-        for i = 1:numel(y)
-            bar(axD, i, y(i), 0.7, 'FaceColor', cols{i}, 'EdgeColor', 'k');
-        end
-        set(axD, 'XTick', 1:numel(bn), 'XTickLabel', cellstr(bn));
-        ylim(axD, [0 105]);
-    end
-    ylabel(axD, 'Validated retention (% eligible Raw)', 'FontWeight', 'bold');
-    title(axD, 'CarryForward retention by band', 'FontWeight', 'bold');
-    script8_style_axes_(axD, theme);
-    script8_panel_label_(axD, 'D', theme);
-    standPaths{4} = script8_export_figure_(figD, fullfile(standDir, 'Fig04_D_Retention'), theme, {theme.ext, '.pdf'});
-    close(figD);
-
-    for k = 1:4
-        manifest = script8_manifest_add_(manifest, 'Fig04', char('A' + k - 1), standPaths{k}{1}, 'standalone', ...
-            'Mechanistic / validation panel', 'Scripts 4/7', 'Tol', '');
-    end
-    [widePath, tallPath] = script8_composite_from_paths_(standPaths, outDirs, 'Fig04_Mechanistic', theme, [2 2], [16 9], [4 5]);
-    manifest = script8_manifest_add_(manifest, 'Fig04', 'Composite', widePath, '16:9', ...
-        'Mechanistic depth: clusters, 24h profiles, CarryForward retention.', 'Scripts 4/7', 'Tol', '');
-end
-
-function script8_plot_24h_profile_(ax, T, yCol, photos, pal, theme, yLabel)
+function script8_plot_24h_profile_(ax, T, yCol, photos, pal, theme, yLabel, bandName)
+    if nargin < 8, bandName = "UR_1_3"; end
     if isempty(T) || ~ismember(yCol, T.Properties.VariableNames)
         return;
     end
     if ismember('BandName', T.Properties.VariableNames)
-        T = T(string(T.BandName) == "UR_1_3", :);
+        T = T(string(T.BandName) == bandName, :);
     end
     hold(ax, 'on');
     cols = {pal.l12, pal.l24};
@@ -606,7 +902,7 @@ function script8_plot_24h_profile_(ax, T, yCol, photos, pal, theme, yLabel)
         plot(ax, subG.(xCol), subG.(meanCol), '-', 'Color', cols{i}, 'LineWidth', 2.2);
         labelX = subG.(xCol)(max(numel(subG.(xCol)) - 1, 1));
         labelY = subG.(meanCol)(max(numel(subG.(meanCol)) - 1, 1));
-        script8_direct_line_label_(ax, labelX + 0.15, labelY, char(labs{i}), cols{i}, theme);
+        script8_direct_line_label_(ax, labelX + 0.15, labelY, char(labs{i}), cols{i}, theme, false);
     end
     xlabel(ax, 'ZT (h)', 'FontWeight', 'bold');
     ylabel(ax, yLabel, 'FontWeight', 'bold');
@@ -614,11 +910,101 @@ function script8_plot_24h_profile_(ax, T, yCol, photos, pal, theme, yLabel)
     script8_style_axes_(ax, theme);
 end
 
-%% Supplementary
+%% Supplementary — sex panel + 24h profiles + coexpression (+ optional legacy)
 function [manifest, standPaths] = script8_build_supplementary_(data, paths, outDirs, theme, manifest)
     standDir = fullfile(outDirs.standalone, 'Supplementary');
     extended_period_gate_ensure_dir(standDir);
     standPaths = {};
+    pal = theme.palette;
+    pp = data.ppOrder;
+    ppLabels = arrayfun(@(x) char(script8_pp_label_(x)), pp, 'UniformOutput', false);
+
+    % Sex-stratified delta (former Fig03D)
+    figSex = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 1000 420]);
+    for bi = 1:numel(data.primaryUR)
+        axD = subplot(1, 2, bi); hold(axD, 'on');
+        bn = data.primaryUR(bi);
+        if ~isempty(data.pairBySex)
+            pooled = data.pairSummary(string(data.pairSummary.UR_Band) == bn & string(data.pairSummary.Phase) == "All", :);
+            pooled = sortrows(pooled, 'Photoperiod_h');
+            plot(axD, 1:height(pooled), pooled.Mean_Delta_log10, '--', 'Color', pal.pooled, 'LineWidth', 1.2);
+            for sx = ["Female", "Male"]
+                sub = data.pairBySex(string(data.pairBySex.UR_Band) == bn & string(data.pairBySex.Phase) == "All" & string(data.pairBySex.Sex) == sx, :);
+                sub = sortrows(sub, 'Photoperiod_h');
+                if sx == "Female", col = pal.female; else, col = pal.male; end
+                plot(axD, 1:height(sub), sub.Mean_Delta_log10, '-o', 'Color', col, 'LineWidth', 2, 'MarkerFaceColor', col);
+                script8_direct_line_label_(axD, height(sub), sub.Mean_Delta_log10(end), char(sx), col, theme, false);
+            end
+        end
+        script8_yline_zero_(axD);
+        set(axD, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
+        xlabel(axD, 'Photoperiod', 'FontWeight', 'bold');
+        if bi == 1
+            ylabel(axD, '\Delta(UR - CR) log_{10}', 'FontWeight', 'bold');
+        end
+        title(axD, ['Sex-stratified \Delta — ' script8_band_display_(bn, 'tex')], 'FontWeight', 'bold', 'Interpreter', 'tex');
+        script8_style_axes_(axD, theme);
+    end
+    outSex = script8_export_figure_(figSex, fullfile(standDir, 'Supp_Fig03D_Sex'), theme, {theme.ext, '.pdf'});
+    close(figSex);
+    standPaths{end + 1} = outSex{1}; %#ok<AGROW>
+    manifest = script8_manifest_add_(manifest, 'Supp', 'Sex_delta', outSex{1}, 'standalone', ...
+        'Sex-stratified CR–UR \Delta (moved from main Fig03).', 'Script 6', 'Tol sex', '');
+
+    % 24h L12 vs L24 profiles
+    figP = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 1000 420]);
+    ax1 = subplot(1, 2, 1); hold(ax1, 'on');
+    script8_plot_24h_profile_(ax1, data.phase24, 'R', [12 24], pal, theme, 'Phase coherence R', "UR_1_3");
+    title(ax1, ['24h phase coherence — ' script8_band_display_('UR_1_3', 'tex')], 'FontWeight', 'bold', 'Interpreter', 'tex');
+    ax2 = subplot(1, 2, 2); hold(ax2, 'on');
+    script8_plot_24h_profile_(ax2, data.ridge24, 'MeanRidgePower_log10', [12 24], pal, theme, 'Ridge power (log_{10})', "UR_1_3");
+    title(ax2, ['24h ridge power — ' script8_band_display_('UR_1_3', 'tex')], 'FontWeight', 'bold', 'Interpreter', 'tex');
+    outP = script8_export_figure_(figP, fullfile(standDir, 'Supp_24h_L12_vs_L24'), theme, {theme.ext, '.pdf'});
+    close(figP);
+    standPaths{end + 1} = outP{1}; %#ok<AGROW>
+    manifest = script8_manifest_add_(manifest, 'Supp', '24h_profiles', outP{1}, 'standalone', ...
+        '24h L12 vs L24 phase/ridge profiles (UR 1–3).', 'Script 7', 'Tol', 'Moved off main Fig05.');
+
+    % Legacy dual-band coherence / ridge-at-transition (former Fig05 B–D)
+    figLegacy = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1200 780]);
+    heroPP = [12 16 22];
+    for fi = 1:numel(heroPP)
+        axB = subplot(2, 3, fi); hold(axB, 'on'); set(axB, 'Color', 'w');
+        script8_plot_coherence_facet_(axB, data.binnedCoherence, heroPP(fi), "UR_1_3", pal, theme, false);
+        title(axB, [char(script8_pp_label_(heroPP(fi))) ' UR 1–3'], 'FontWeight', 'bold');
+        set(axB, 'YLim', [0 pal.coherenceYMax], 'XLim', pal.coherenceXlim);
+        script8_style_axes_(axB, theme);
+        axC = subplot(2, 3, fi + 3); hold(axC, 'on'); set(axC, 'Color', 'w');
+        script8_plot_coherence_facet_(axC, data.binnedCoherence, heroPP(fi), "UR_3_6", pal, theme, false);
+        title(axC, [char(script8_pp_label_(heroPP(fi))) ' UR 3–6'], 'FontWeight', 'bold');
+        set(axC, 'YLim', [0 pal.coherenceYMax], 'XLim', pal.coherenceXlim);
+        script8_style_axes_(axC, theme);
+    end
+    outL = script8_export_figure_(figLegacy, fullfile(standDir, 'Supp_Legacy_DualBand_Coherence'), theme, {theme.ext, '.pdf'});
+    close(figLegacy);
+    standPaths{end + 1} = outL{1}; %#ok<AGROW>
+    manifest = script8_manifest_add_(manifest, 'Supp', 'Legacy_coherence', outL{1}, 'standalone', ...
+        'Former Fig05 dual-band coherence facets (now Supplementary).', 'Scripts 5/7', 'Tol', '');
+
+    figRidge = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 1000 420]);
+    for bi = 1:2
+        axD = subplot(1, 2, bi); hold(axD, 'on');
+        bn = data.primaryUR(bi);
+        script8_plot_binned_ridge_(axD, data.binnedCoherence, bn, [12 22], pal, theme);
+        title(axD, ['Ridge power at LD/DL — ' script8_band_display_(bn, 'tex')], ...
+            'FontWeight', 'bold', 'Interpreter', 'tex');
+        if bi == 1
+            ylabel(axD, 'Mean ridge power (log_{10})', 'FontWeight', 'bold');
+        end
+        xlabel(axD, 'Time relative to transition (h)', 'FontWeight', 'bold');
+        script8_style_axes_(axD, theme);
+    end
+    outR = script8_export_figure_(figRidge, fullfile(standDir, 'Supp_Legacy_RidgeAtTransition'), theme, {theme.ext, '.pdf'});
+    close(figRidge);
+    standPaths{end + 1} = outR{1}; %#ok<AGROW>
+    manifest = script8_manifest_add_(manifest, 'Supp', 'Legacy_ridge', outR{1}, 'standalone', ...
+        'Former Fig05 ridge-at-transition panels (now Supplementary).', 'Scripts 5/7', 'Tol', '');
+
     coexpPath = fullfile(paths.script3Root, 'Figures', 'Coexpression_CR_UR_RAW.jpeg');
     if isfile(coexpPath)
         dest = fullfile(standDir, ['Supp_Coexpression_RAW' theme.ext]);
@@ -668,9 +1054,7 @@ function [widePath, tallPath] = script8_composite_grid_(items, outDirs, name, th
 end
 
 function script8_export_tall_copy_(tallPath, widePath, tallDir)
-    if isfile(tallPath)
-        return;
-    end
+    if isfile(tallPath), return; end
     if isfile(widePath)
         copyfile(widePath, fullfile(tallDir, ['TALL_' basename_(widePath)]), 'f');
     end
@@ -744,14 +1128,14 @@ function T = script8_colour_key_table_()
     roles = {
         'DL (lights-on)', '#4477AA', 'Transition panels only';
         'LD (lights-off)', '#EE6677', 'Transition panels only';
-        'UR_1_3', '#66CCEE', 'Band panels';
-        'UR_3_6', '#AA3377', 'Band panels';
-        'CR_20_28', '#BBBBBB', 'CR traces / dark schematic';
+        'UR 1–3 h', '#66CCEE', 'Band panels (key UR_1_3)';
+        'UR 3–6 h', '#AA3377', 'Band panels (key UR_3_6)';
+        'CR 20–28 h', '#BBBBBB', 'CR traces / dark schematic';
         'Female', '#228833', 'Sex inset only';
         'Male', '#CCBB44', 'Sex inset only';
-        'L12 (24h compare)', '#4477AA', 'Fig 4B/C only';
-        'L24 (24h compare)', '#AA3377', 'Fig 4B/C only';
-        'Scalograms', 'Jet', 'Fig 1 only'};
+        'L12 (compare)', '#4477AA', 'Fig05 / supp 24h';
+        'L22 / L24', '#AA3377', 'Fig05 / supp 24h';
+        'Scalograms', 'Jet', 'Fig02 RAW + HSub residual'};
     T = cell2table(roles, 'VariableNames', {'Role', 'Colour', 'Usage'});
 end
 
@@ -819,6 +1203,33 @@ function lbl = script8_pp_label_(pp)
     lbl = "L" + string(round(double(pp)));
 end
 
+function lbl = script8_band_display_(bandKey, mode)
+%SCRIPT8_BAND_DISPLAY_ Map machine keys to figure-facing labels.
+    if nargin < 2, mode = 'tex'; end
+    key = char(string(bandKey));
+    switch key
+        case 'UR_1_3'
+            texLbl = 'UR_{1–3}'; plainLbl = 'UR 1–3 h';
+        case 'UR_3_6'
+            texLbl = 'UR_{3–6}'; plainLbl = 'UR 3–6 h';
+        case 'UR_6_9'
+            texLbl = 'UR_{6–9}'; plainLbl = 'UR 6–9 h';
+        case 'UR_9_12'
+            texLbl = 'UR_{9–12}'; plainLbl = 'UR 9–12 h';
+        case 'UR_12_18'
+            texLbl = 'UR_{12–18}'; plainLbl = 'UR 12–18 h';
+        case 'CR_20_28'
+            texLbl = 'CR_{20–28}'; plainLbl = 'CR 20–28 h';
+        otherwise
+            texLbl = strrep(key, '_', '\_'); plainLbl = strrep(key, '_', ' ');
+    end
+    if strcmpi(mode, 'plain')
+        lbl = plainLbl;
+    else
+        lbl = texLbl;
+    end
+end
+
 function rgb = script8_band_colour_(pal, bandName)
     key = char(string(bandName));
     if isKey(pal.band, key), rgb = pal.band(key); else, rgb = pal.base(7, :); end
@@ -848,8 +1259,12 @@ function script8_panel_label_(ax, labelChar, theme)
         'FontSize', 14, 'FontName', theme.fontName, 'VerticalAlignment', 'top');
 end
 
-function script8_direct_line_label_(ax, x, y, txt, colour, theme)
-    text(ax, x, y, txt, 'Color', colour, 'FontName', theme.fontName, 'FontWeight', 'bold', 'FontSize', 10);
+function script8_direct_line_label_(ax, x, y, txt, colour, theme, useTex)
+    if nargin < 7, useTex = false; end
+    interp = 'none';
+    if useTex, interp = 'tex'; end
+    text(ax, x, y, txt, 'Color', colour, 'FontName', theme.fontName, 'FontWeight', 'bold', ...
+        'FontSize', 10, 'Interpreter', interp);
 end
 
 function script8_add_n_annotation_(ax, nMice, ~, theme)
@@ -877,18 +1292,22 @@ function img = script8_crop_hsub_residual_(imgPath)
     img = img(:, round(size(img, 2) / 2) + 1:end, :);
 end
 
-function script8_arrow_(ax, x1, y1, x2, y2, col)
-    annotation(ax.Parent, 'arrow', ...
-        script8_norm_ann_(ax, [x1 x2]), script8_norm_ann_y_(ax, [y1 y2]), ...
-        'Color', col, 'LineWidth', 1.5, 'HeadWidth', 8);
-end
-
-function xn = script8_norm_ann_(ax, x)
-    xl = xlim(ax); xn = (x - xl(1)) / range(xl) * 0.9 + 0.05;
-end
-
-function yn = script8_norm_ann_y_(ax, y)
-    yl = ylim(ax); yn = (y - yl(1)) / range(yl) * 0.9 + 0.05;
+function script8_axes_arrow_(ax, x1, y1, x2, y2, col)
+% Draw arrow in axes data coordinates (avoids rogue figure-annotation arrows).
+    hold(ax, 'on');
+    dx = x2 - x1; dy = y2 - y1;
+    segLen = hypot(dx, dy);
+    if segLen < 1e-6, return; end
+    ang = atan2(dy, dx);
+    headLen = min(0.10, 0.40 * segLen);
+    headW = min(0.045, 0.55 * headLen);
+    xBase = x2 - headLen * cos(ang);
+    yBase = y2 - headLen * sin(ang);
+    plot(ax, [x1 xBase], [y1 yBase], '-', 'Color', col, 'LineWidth', 1.6, 'HandleVisibility', 'off');
+    px = [-headW * sin(ang), headW * sin(ang)];
+    py = [headW * cos(ang), -headW * cos(ang)];
+    patch(ax, [x2, xBase + px(1), xBase + px(2)], [y2, yBase + py(1), yBase + py(2)], col, ...
+        'EdgeColor', 'none', 'HandleVisibility', 'off');
 end
 
 function cmap = script8_diverging_cmap_()

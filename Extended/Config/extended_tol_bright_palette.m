@@ -40,7 +40,7 @@ function pal = extended_tol_bright_palette()
     pal.primaryUR = ["UR_1_3", "UR_3_6"];
     pal.allUR = ["UR_1_3", "UR_3_6", "UR_6_9", "UR_9_12", "UR_12_18"];
 
-    pal.coherenceFacets = [12, 22, 24];
+    pal.coherenceFacets = [12, 14, 16, 18, 20, 22];  % entrained photoperiods only (no LL)
     pal.coherenceYMax = 0.65;
     pal.coherenceXlim = [-6, 6];
 
