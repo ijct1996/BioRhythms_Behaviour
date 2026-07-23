@@ -1,5 +1,10 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Script 7 activity column match (v2.1)
+
+### Fixed
+- `find_table_column` in `extended_script7_profiles_run.m`: sex-prefixed SignalIDs (`F_`/`M_`) now strip before matching Excel headers; fuzzy `contains` no longer uses R2025b scalar broadcasting that bound every mouse to `Time (hr)`. Non-activity columns (time/light/ZT) are excluded. Activity z-scored 24h profiles should again show grey individuals + ultradian structure.
+
 ## [Unreleased] — Repo layout cleanup
 
 ### Changed

@@ -12,7 +12,7 @@ function out = extended_script7_profiles_run(extHandoffDir, cfg)
     fprintf('Plot mode: %s\n', cfg.plotMode);
 %% ----------------------------- SETTINGS ---------------------------------
 SCRIPT_NAME    = 'extended_script7_profiles_run';
-SCRIPT_VERSION = '2.0';
+SCRIPT_VERSION = '2.1';
 RUN_TIMESTAMP  = string(datetime('now','Format','yyyy-MM-dd HH:mm:ss'));
 
 % Main bands for publication-focused plotting
@@ -1056,6 +1056,11 @@ function [ActivityZTTable, Warnings, PlotFiles] = plot_zt_activity_components(Cl
                         warnRows(end+1,:) = {clusterID, photo, fileStem, sig, "Signal/activity column not found in raw file"}; %#ok<AGROW>
                         continue;
                     end
+                    if is_non_activity_column_(col)
+                        warnRows(end+1,:) = {clusterID, photo, fileStem, sig, ...
+                            "Matched non-activity column (" + string(col) + "); skipped."}; %#ok<AGROW>
+                        continue;
+                    end
 
                     rawY = to_double(Traw.(col));
                     [lowPad, highPad] = padded_period_window(double(C.PeriodLow_h), double(C.PeriodHigh_h), padFrac);
@@ -1215,32 +1220,79 @@ function [timeH, warn] = extract_time_hours(T)
 end
 
 function col = find_table_column(T, signalID)
+%FIND_TABLE_COLUMN Map membership SignalID to a raw Excel activity column.
+%   Handles sex-prefixed IDs (F_/M_) that do not appear in Excel headers.
+%   Avoids R2025b scalar-contains pitfalls that previously bound Time (hr).
     col = "";
     names = string(T.Properties.VariableNames);
     signalID = string(signalID);
-
-    exact = find(names == signalID, 1, 'first');
-    if ~isempty(exact)
-        col = names(exact);
+    if strlength(signalID) == 0 || isempty(names)
         return;
     end
 
-    normSignal = normalise_name(signalID);
+    candidates = unique([signalID; strip_sex_prefix_(signalID)], 'stable');
+    for c = 1:numel(candidates)
+        exact = find(names == candidates(c), 1, 'first');
+        if ~isempty(exact) && ~is_non_activity_column_(names(exact))
+            col = names(exact);
+            return;
+        end
+    end
+
     normNames = strings(size(names));
     for k = 1:numel(names)
         normNames(k) = normalise_name(names(k));
     end
-    idx = find(normNames == normSignal, 1, 'first');
-    if ~isempty(idx)
-        col = names(idx);
-        return;
+    for c = 1:numel(candidates)
+        normSignal = normalise_name(candidates(c));
+        if strlength(normSignal) == 0
+            continue;
+        end
+        idx = find(normNames == normSignal, 1, 'first');
+        if ~isempty(idx) && ~is_non_activity_column_(names(idx))
+            col = names(idx);
+            return;
+        end
     end
 
-    validNames = strlength(normNames) > 0;
-    idx = find(validNames & (contains(normNames, normSignal) | contains(normSignal, normNames)), 1, 'first');
-    if ~isempty(idx)
-        col = names(idx);
+    % Fuzzy: element-wise only; prefer longest Excel header that is a suffix
+    % of the SignalID (or vice versa), excluding time/light metadata columns.
+    bestIdx = [];
+    bestScore = -1;
+    for c = 1:numel(candidates)
+        normSignal = normalise_name(candidates(c));
+        if strlength(normSignal) < 3
+            continue;
+        end
+        for k = 1:numel(names)
+            if is_non_activity_column_(names(k)) || strlength(normNames(k)) == 0
+                continue;
+            end
+            nn = normNames(k);
+            if ~(contains(normSignal, nn) || contains(nn, normSignal))
+                continue;
+            end
+            score = min(strlength(normSignal), strlength(nn));
+            if score > bestScore
+                bestScore = score;
+                bestIdx = k;
+            end
+        end
     end
+    if ~isempty(bestIdx)
+        col = names(bestIdx);
+    end
+end
+
+function sid = strip_sex_prefix_(signalID)
+    sid = string(signalID);
+    sid = regexprep(sid, '^[FfMm]_', '');
+end
+
+function tf = is_non_activity_column_(name)
+    n = lower(string(name));
+    tf = contains(n, "time") || contains(n, "date") || contains(n, "light") || ...
+        contains(n, "zt") || n == "day" || n == "hr" || n == "hour" || n == "hours";
 end
 
 function [compZ, timeOutH, warn] = period_targeted_activity_component(timeH, y, periodLowH, periodHighH, filterOrder, minCycles)
