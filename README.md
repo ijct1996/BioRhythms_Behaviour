@@ -17,16 +17,14 @@ run_across_photoperiod     % Script 3
 ## Quick start — Extended UR (E1)
 
 ```matlab
-cd('C:\Users\User\Dev\Cursor\Research\Chronobiology\BioRhythms_Behaviour\Extended')
-setup_extended_paths   % also pulls in Core setup_paths
+cd('C:\Users\User\Dev\Cursor\Research\Chronobiology\BioRhythms_Behaviour')
+setup_paths();   % Core + Extended (or setup_extended_paths — same activation)
 
-run_extended_hsub                 % A
-run_extended_wavelet_ridge        % B
-run_extended_period_gate          % C
-run_extended_ridge_resync         % D
-run_extended_across_photoperiod   % E
-run_extended_phase_events         % F
-run_extended_publication_profiles % G
+run_extended_script4_ridge_validation
+run_extended_script5_transition_resync
+run_extended_script6_across_lme
+run_extended_script7_phase_profiles
+run_extended_script8_publication_figures
 ```
 
 See `Extended/README.md`. Core Scripts 1–3 are frozen; do not conflate Core Script 3 residual-CWT UR with Extended CarryForward (±15% SEL_P360).
