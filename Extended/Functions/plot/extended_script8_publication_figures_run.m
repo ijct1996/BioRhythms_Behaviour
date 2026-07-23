@@ -115,16 +115,16 @@ function [manifest, widePath, standPaths] = script8_build_fig00_(paths, outDirs,
     axis(ax, [0 10 0 1]); axis(ax, 'off');
 
     boxes = {
-        0.3, 0.55, 'RAW activity\n(Script 2 wavelet)';
-        2.0, 0.55, 'CarryForward gate\n±15% SEL_P360 (Script 4)';
-        4.0, 0.55, 'Transition resync\n(Script 5)';
-        6.2, 0.55, 'Gradient LME\n(Script 6)';
-        4.0, 0.15, 'Phase / 24h profiles\n(Script 7)';
-        2.0, 0.15, 'HSub validation\n(Core Script 1–3)';
+        0.65, 0.55, sprintf('RAW activity\n(Script 2 wavelet)');
+        2.55, 0.55, sprintf('CarryForward gate\n±15%% SEL_P360 (Script 4)');
+        4.65, 0.55, sprintf('Transition resync\n(Script 5)');
+        7.15, 0.55, sprintf('Gradient LME\n(Script 6)');
+        4.65, 0.15, sprintf('Phase / 24h profiles\n(Script 7)');
+        2.55, 0.15, sprintf('HSub validation\n(Core Script 1-3)');
         };
     for i = 1:size(boxes, 1)
         x = boxes{i, 1}; y = boxes{i, 2}; txt = boxes{i, 3};
-        w = 1.5; h = 0.28;
+        w = 1.8; h = 0.28;
         rectangle(ax, 'Position', [x - w/2, y - h/2, w, h], 'Curvature', 0.08, ...
             'FaceColor', [1 1 1], 'EdgeColor', pal.base(1, :), 'LineWidth', 1.5);
         text(ax, x, y, txt, 'HorizontalAlignment', 'center', 'FontName', theme.fontName, ...
@@ -134,11 +134,11 @@ function [manifest, widePath, standPaths] = script8_build_fig00_(paths, outDirs,
         'Raw UR candidates carried forward only when matched to HSub residual (±15% period tolerance).', ...
         'EdgeColor', 'none', 'HorizontalAlignment', 'center', 'FontName', theme.fontName, ...
         'FontSize', 11, 'FontWeight', 'bold', 'Interpreter', 'none');
-    script8_arrow_(ax, 1.05, 0.55, 1.25, 0.55, pal.base(1, :));
-    script8_arrow_(ax, 2.75, 0.55, 3.25, 0.55, pal.base(1, :));
-    script8_arrow_(ax, 4.75, 0.55, 5.45, 0.55, pal.base(1, :));
-    script8_arrow_(ax, 3.25, 0.48, 2.75, 0.28, pal.base(7, :));
-    script8_arrow_(ax, 4.75, 0.42, 4.0, 0.28, pal.base(3, :));
+    script8_arrow_(ax, 1.55, 0.55, 1.85, 0.55, pal.base(1, :));
+    script8_arrow_(ax, 3.45, 0.55, 3.75, 0.55, pal.base(1, :));
+    script8_arrow_(ax, 5.55, 0.55, 6.25, 0.55, pal.base(1, :));
+    script8_arrow_(ax, 3.8, 0.48, 3.2, 0.28, pal.base(7, :));
+    script8_arrow_(ax, 5.55, 0.42, 4.85, 0.28, pal.base(3, :));
     title(ax, 'Extended analysis pipeline (C57\_LP)', 'FontName', theme.fontName, 'FontWeight', 'bold');
 
     base = fullfile(outDirs.standalone, 'Fig00_Pipeline');
@@ -231,8 +231,12 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig02_(data,
     cr = data.absSummary(string(data.absSummary.BandName) == "CR_20_28" & string(data.absSummary.Phase) == "All", :);
     ur = data.absSummary(string(data.absSummary.BandName) == "UR_1_3" & string(data.absSummary.Phase) == "All", :);
     cr = sortrows(cr, 'Photoperiod_h'); ur = sortrows(ur, 'Photoperiod_h');
-    plot(axB, 1:height(cr), cr.Mean_Log10, '-s', 'Color', pal.cr, 'LineWidth', 2, 'MarkerFaceColor', pal.cr);
-    plot(axB, 1:height(ur), ur.Mean_Log10, '-o', 'Color', script8_band_colour_(pal, 'UR_1_3'), 'LineWidth', 2);
+    crErr = cr.SD_Log10 ./ sqrt(max(data.nMice, 1));
+    urErr = ur.SD_Log10 ./ sqrt(max(data.nMice, 1));
+    errorbar(axB, 1:height(cr), cr.Mean_Log10, crErr, '-s', 'Color', pal.cr, 'LineWidth', 2, ...
+        'MarkerFaceColor', pal.cr, 'CapSize', 8);
+    errorbar(axB, 1:height(ur), ur.Mean_Log10, urErr, '-o', 'Color', script8_band_colour_(pal, 'UR_1_3'), ...
+        'LineWidth', 2, 'MarkerFaceColor', script8_band_colour_(pal, 'UR_1_3'), 'CapSize', 8);
     script8_direct_line_label_(axB, height(cr), cr.Mean_Log10(end), 'CR', pal.cr, theme);
     script8_direct_line_label_(axB, height(ur), ur.Mean_Log10(end), 'UR\_1\_3', script8_band_colour_(pal, 'UR_1_3'), theme);
     set(axB, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
@@ -340,13 +344,18 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig03_(data,
     standPaths{2} = script8_export_figure_(figB, fullfile(standDir, 'Fig03_B_DeltaRGrad'), theme, {theme.ext, '.pdf'});
     close(figB);
 
-    %% C — Faceted coherence L12 | L22 | L24
+    %% C — Faceted coherence L12 | L22 | L24 / LL endpoint note
     figC = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 1200 420]);
     facets = pal.coherenceFacets;
     for fi = 1:numel(facets)
         axC = subplot(1, numel(facets), fi); hold(axC, 'on');
-        script8_plot_coherence_facet_(axC, data.binnedCoherence, facets(fi), data.primaryUR(1), pal, theme);
-        title(axC, char(script8_pp_label_(facets(fi))), 'FontWeight', 'bold');
+        hasFacet = script8_plot_coherence_facet_(axC, data.binnedCoherence, facets(fi), data.primaryUR(1), pal, theme);
+        if hasFacet
+            title(axC, char(script8_pp_label_(facets(fi))), 'FontWeight', 'bold');
+        else
+            script8_plot_empty_coherence_note_(axC, facets(fi), theme);
+            title(axC, 'L24 / LL', 'FontWeight', 'bold');
+        end
         if fi == 1
             ylabel(axC, 'Phase coherence R', 'FontWeight', 'bold');
         end
@@ -359,7 +368,8 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig03_(data,
         set(axC, 'YLim', [0 pal.coherenceYMax], 'XLim', pal.coherenceXlim);
         script8_style_axes_(axC, theme);
     end
-    sgtitle(figC, 'DL/LD phase coherence (UR\_1\_3, faceted by photoperiod)', 'FontWeight', 'bold', 'FontName', theme.fontName);
+    sgtitle(figC, 'DL/LD phase coherence (UR\_1\_3; transition facets stop at entrained photoperiods)', ...
+        'FontWeight', 'bold', 'FontName', theme.fontName);
     standPaths{3} = script8_export_figure_(figC, fullfile(standDir, 'Fig03_C_CoherenceFacets'), theme, {theme.ext, '.pdf'});
     close(figC);
 
@@ -367,7 +377,7 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig03_(data,
     figD = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
     axD = axes(figD);
     script8_plot_ridge_heatmap_(axD, data.ridgePowerFdr, pal, theme);
-    title(axD, 'Ridge power change (FDR-significant direction)', 'FontWeight', 'bold');
+    title(axD, 'LD ridge power change (FDR-significant cells only)', 'FontWeight', 'bold');
     script8_panel_label_(axD, 'D', theme);
     standPaths{4} = script8_export_figure_(figD, fullfile(standDir, 'Fig03_D_Heatmap'), theme, {theme.ext, '.pdf'});
     close(figD);
@@ -378,7 +388,8 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig03_(data,
     end
     [widePath, tallPath] = script8_composite_from_paths_(standPaths, outDirs, 'Fig03_Transitions', theme, [2 2], [16 9], [4 5]);
     manifest = script8_manifest_add_(manifest, 'Fig03', 'Composite', widePath, '16:9', ...
-        'Transition-locked ultradian dynamics across photoperiod.', 'Script 5', 'Tol', 'Panel C faceted L12|L22|L24.');
+        'Transition-locked ultradian dynamics across photoperiod.', 'Script 5', 'Tol', ...
+        'Panel C shows L12 and L22 coherence plus LL endpoint note because transition coherence is undefined at L24.');
 end
 
 function script8_plot_transition_metric_(ax, grad, bands, metricName, ppPlot, pal, theme)
@@ -407,14 +418,17 @@ function script8_plot_transition_metric_(ax, grad, bands, metricName, ppPlot, pa
     end
 end
 
-function script8_plot_coherence_facet_(ax, Bin, photoperiod_h, bandName, pal, theme)
+function hasData = script8_plot_coherence_facet_(ax, Bin, photoperiod_h, bandName, pal, theme)
+    hasData = false;
     if isempty(Bin), return; end
     B = Bin(Bin.Photoperiod_h == photoperiod_h & string(Bin.BandName) == bandName, :);
+    if isempty(B), return; end
     hold(ax, 'on');
     ylSet = false;
     for tr = ["DL", "LD"]
         Bt = B(string(B.TransitionType) == tr, :);
         if isempty(Bt), continue; end
+        hasData = true;
         Bt = sortrows(Bt, 'RelBinCenter_h');
         col = script8_transition_colour_(pal, tr);
         x = Bt.RelBinCenter_h;
@@ -435,24 +449,51 @@ function script8_plot_coherence_facet_(ax, Bin, photoperiod_h, bandName, pal, th
     script8_style_axes_(ax, theme);
 end
 
+function script8_plot_empty_coherence_note_(ax, photoperiod_h, theme)
+    axis(ax, [0 1 0 1]);
+    axis(ax, 'off');
+    text(ax, 0.5, 0.66, sprintf('No transition coherence for %s', char(script8_pp_label_(photoperiod_h))), ...
+        'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontWeight', 'bold', 'FontSize', 11);
+    text(ax, 0.5, 0.47, 'LL has no entrained lights-on/off boundary,', ...
+        'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 10);
+    text(ax, 0.5, 0.37, 'so DL/LD pre/post coherence is undefined.', ...
+        'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 10);
+end
+
 function script8_plot_ridge_heatmap_(ax, RP, pal, theme)
     if isempty(RP), return; end
     bands = pal.allUR;
     pp = unique(double(RP.Photoperiod_h)); pp = sort(pp(pp <= 22));
     M = nan(numel(bands), numel(pp));
+    Sig = false(numel(bands), numel(pp));
     for bi = 1:numel(bands)
         for pi = 1:numel(pp)
             idx = RP.Photoperiod_h == pp(pi) & string(RP.BandName) == bands(bi) & string(RP.TransitionType) == "LD";
             if any(idx) && ismember('MeanDifference_PostMinusPre', RP.Properties.VariableNames)
-                M(bi, pi) = RP.MeanDifference_PostMinusPre(find(idx, 1));
+                row = RP(find(idx, 1), :);
+                isSig = ismember('Significant_BH', row.Properties.VariableNames) && logical(row.Significant_BH(1));
+                if isSig
+                    M(bi, pi) = row.MeanDifference_PostMinusPre(1);
+                    Sig(bi, pi) = true;
+                end
             end
         end
     end
     imagesc(ax, M);
     colormap(ax, script8_diverging_cmap_());
-    colorbar(ax);
+    cb = colorbar(ax);
+    cb.Label.String = 'LD mean difference (post - pre)';
     set(ax, 'XTick', 1:numel(pp), 'XTickLabel', arrayfun(@(x) char(script8_pp_label_(x)), pp, 'UniformOutput', false), ...
         'YTick', 1:numel(bands), 'YTickLabel', cellstr(bands));
+    hold(ax, 'on');
+    for bi = 1:numel(bands)
+        for pi = 1:numel(pp)
+            if Sig(bi, pi)
+                text(ax, pi, bi, '*', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
+                    'FontWeight', 'bold', 'FontSize', 11, 'Color', [0.15 0.15 0.15]);
+            end
+        end
+    end
     script8_style_axes_(ax, theme);
 end
 
@@ -463,18 +504,26 @@ function [manifest, widePath, tallPath, standPaths] = script8_build_fig04_(data,
     extended_period_gate_ensure_dir(standDir);
     standPaths = cell(4, 1);
 
-    %% A — Cluster histogram
+    %% A — Cluster support by validated period cluster
     figA = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
     axA = axes(figA); hold(axA, 'on');
     CS = data.clusterSummary;
-    if ~isempty(CS) && ismember('PeriodCentre_h', CS.Properties.VariableNames)
-        histogram(axA, CS.PeriodCentre_h, 'BinWidth', 0.25, 'FaceColor', pal.base(2, :), 'EdgeColor', 'k');
-        xline(axA, 2, '--', 'Color', script8_band_colour_(pal, 'UR_1_3'), 'LineWidth', 1.2);
-        xline(axA, 4.5, '--', 'Color', script8_band_colour_(pal, 'UR_3_6'), 'LineWidth', 1.2);
+    if ~isempty(CS) && all(ismember({'PeriodCentre_h', 'CandidateCount', 'BandName'}, CS.Properties.VariableNames))
+        centres = double(CS.PeriodCentre_h);
+        counts = double(CS.CandidateCount);
+        for i = 1:numel(centres)
+            col = script8_band_colour_(pal, string(CS.BandName(i)));
+            bar(axA, centres(i), counts(i), 0.32, 'FaceColor', col, 'EdgeColor', 'k', 'LineWidth', 1);
+            text(axA, centres(i), counts(i) + max(counts) * 0.03, sprintf('n=%d', counts(i)), ...
+                'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'FontSize', 9);
+        end
+        xline(axA, 2, '--', 'Color', script8_band_colour_(pal, 'UR_1_3'), 'LineWidth', 1.2, 'HandleVisibility', 'off');
+        xline(axA, 4.5, '--', 'Color', script8_band_colour_(pal, 'UR_3_6'), 'LineWidth', 1.2, 'HandleVisibility', 'off');
+        xlim(axA, [min(centres) - 0.45, max(centres) + 0.45]);
     end
     xlabel(axA, 'Validated ridge period (h)', 'FontWeight', 'bold');
-    ylabel(axA, 'Count', 'FontWeight', 'bold');
-    title(axA, 'Validated period clusters', 'FontWeight', 'bold');
+    ylabel(axA, 'Validated candidates', 'FontWeight', 'bold');
+    title(axA, 'Validated period clusters (weighted by candidate count)', 'FontWeight', 'bold');
     script8_style_axes_(axA, theme);
     script8_panel_label_(axA, 'A', theme);
     standPaths{1} = script8_export_figure_(figA, fullfile(standDir, 'Fig04_A_Clusters'), theme, {theme.ext, '.pdf'});
@@ -555,10 +604,13 @@ function script8_plot_24h_profile_(ax, T, yCol, photos, pal, theme, yLabel)
             if ~isempty(vn), meanCol = string(vn{1}); end
         end
         plot(ax, subG.(xCol), subG.(meanCol), '-', 'Color', cols{i}, 'LineWidth', 2.2);
-        script8_direct_line_label_(ax, subG.(xCol)(end), subG.(meanCol)(end), char(labs{i}), cols{i}, theme);
+        labelX = subG.(xCol)(max(numel(subG.(xCol)) - 1, 1));
+        labelY = subG.(meanCol)(max(numel(subG.(meanCol)) - 1, 1));
+        script8_direct_line_label_(ax, labelX + 0.15, labelY, char(labs{i}), cols{i}, theme);
     end
     xlabel(ax, 'ZT (h)', 'FontWeight', 'bold');
     ylabel(ax, yLabel, 'FontWeight', 'bold');
+    xlim(ax, [0 24.75]);
     script8_style_axes_(ax, theme);
 end
 
@@ -583,7 +635,7 @@ function [widePath, tallPath] = script8_composite_from_paths_(standPaths, outDir
     for i = 1:numel(standPaths)
         p = standPaths{i};
         if iscell(p), p = p{1}; end
-        if isfile(p), imgs{i} = imread(p); end
+        if isfile(p), imgs{i} = script8_trim_image_whitespace_(imread(p)); end
     end
     [widePath, tallPath] = script8_composite_grid_(imgs, outDirs, name, theme, gridShape, wideAR, tallAR);
 end
@@ -595,7 +647,7 @@ function [widePath, tallPath] = script8_composite_grid_(items, outDirs, name, th
     for i = 1:min(n, numel(items))
         nexttile(tl, i);
         img = items{i};
-        if iscell(img), img = imread(img{1}); end
+        if iscell(img), img = script8_trim_image_whitespace_(imread(img{1})); end
         if ~isempty(img), imshow(img); axis off; end
     end
     widePath = fullfile(outDirs.compositeWide, [name theme.ext]);
@@ -607,7 +659,7 @@ function [widePath, tallPath] = script8_composite_grid_(items, outDirs, name, th
     for i = 1:min(n, numel(items))
         nexttile(tl2, i);
         img = items{i};
-        if iscell(img), img = imread(img{1}); end
+        if iscell(img), img = script8_trim_image_whitespace_(imread(img{1})); end
         if ~isempty(img), imshow(img); axis off; end
     end
     tallPath = fullfile(outDirs.compositeTall, [name theme.ext]);
@@ -627,6 +679,23 @@ end
 function b = basename_(p)
     [~, b, e] = fileparts(p);
     b = [b e];
+end
+
+function img = script8_trim_image_whitespace_(img)
+    if isempty(img), return; end
+    if ndims(img) == 3
+        mask = any(img < 250, 3);
+    else
+        mask = img < 250;
+    end
+    [rows, cols] = find(mask);
+    if isempty(rows) || isempty(cols), return; end
+    pad = 6;
+    r1 = max(min(rows) - pad, 1);
+    r2 = min(max(rows) + pad, size(img, 1));
+    c1 = max(min(cols) - pad, 1);
+    c2 = min(max(cols) + pad, size(img, 2));
+    img = img(r1:r2, c1:c2, :);
 end
 
 %% Theme / IO / manifest helpers
