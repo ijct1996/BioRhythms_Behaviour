@@ -843,7 +843,7 @@ function groups = lb_group_dialog(varNames, mouseIdx)
             continue;
         end
         colIdx = remaining(sel);
-        groups(end+1).name = grpName; %#ok<AGROW>
+        groups(end+1).name = grpName; 
         groups(end).colIdx = colIdx;
         groups(end).colNames = varNames(colIdx);
         remaining = setdiff(remaining, colIdx, 'stable');
@@ -864,7 +864,7 @@ function groups = lb_resolve_groups(varNames, template)
         colIdx = [];
         for k = 1:numel(names)
             ix = find(strcmp(varNames, names{k}), 1);
-            if ~isempty(ix), colIdx(end+1) = ix; end %#ok<AGROW>
+            if ~isempty(ix), colIdx(end+1) = ix; end 
         end
         groups(g).name = template(g).name;
         groups(g).colIdx = colIdx;
@@ -938,7 +938,7 @@ function figurePaths = lb_hsub_plot_scalograms(tbl, timeIdx, lightIdx, varNames,
             armLabel, grpName, nOk, LightDur_h);
         lb_hsub_two_panel_scalogram(wtRem, wtRes, periods_hours, time_day, ...
             condChangeIdx, titleStr, outFile, theme, opts);
-        figurePaths{end+1} = outFile; %#ok<AGROW>
+        figurePaths{end+1} = outFile; 
         fprintf('    "%s" (n=%d) → %s\n', grpName, nOk, outFile);
 
         if saveIndividual
@@ -957,7 +957,7 @@ function figurePaths = lb_hsub_plot_scalograms(tbl, timeIdx, lightIdx, varNames,
                     armLabel, grpName, mouseName, LightDur_h);
                 lb_hsub_two_panel_scalogram(wtRemI, wtResI, periods_hours, time_day, ...
                     condChangeIdx, titleInd, outInd, indivTheme, opts);
-                figurePaths{end+1} = outInd; %#ok<AGROW>
+                figurePaths{end+1} = outInd; 
             end
         end
     end
@@ -1008,7 +1008,7 @@ end
 function lb_hsub_draw_panel(ax, wt, periods_hours, time_day, condChangeIdx, ...
         yLo, yHi, panelLabel, theme, opts)
 % One jet |wt| panel; white dotted lines mark light-duration changes if present.
-    axes(ax); %#ok<LAXES>
+    axes(ax); 
     pcolor(time_day, periods_hours, abs(wt));
     shading interp;
     colormap(ax, theme.colormap);
