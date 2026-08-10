@@ -8,7 +8,7 @@ function cfg = extended_defaults()
 
     cfg.version = '1.0-dev';
     cfg.matlabTarget = 'R2025b';
-    cfg.phase = 'Scripts4-8';
+    cfg.phase = 'Scripts4-10';
 
     %% Plot mode — development until user requests publication pass
     cfg.plotMode = 'development';
@@ -20,7 +20,7 @@ function cfg = extended_defaults()
     cfg.samplingHours = 10 / 60;
     cfg.samplingMinutes = 10;
 
-    %% Script numbering (Extended 4–7)
+    %% Script numbering (Extended 4–10)
     cfg.scripts = struct();
     cfg.scripts(4).name = 'Ridge handoff + CarryForward validation';
     cfg.scripts(4).entry = 'run_extended_script4_ridge_validation';
@@ -32,7 +32,10 @@ function cfg = extended_defaults()
     cfg.scripts(7).entry = 'run_extended_script7_phase_profiles';
     cfg.scripts(8).name = 'Publication figure composites (Scripts 1-7 inputs)';
     cfg.scripts(8).entry = 'run_extended_script8_publication_figures';
-
+    cfg.scripts(9).name = 'Supplementary publication figures (sex + cluster grids)';
+    cfg.scripts(9).entry = 'run_extended_script9_supplementary_figures';
+    cfg.scripts(10).name = 'Manuscript figure assembler (locked Figs 1–7 + package)';
+    cfg.scripts(10).entry = 'run_extended_script10_manuscript_figures';
     %% HSub / CarryForward (Script 4 gate)
     cfg.hsub.defaultResidual = 'SEL_P360';
     cfg.hsub.primaryMode = "SEL_P360";
@@ -69,6 +72,14 @@ function cfg = extended_defaults()
     cfg.script8.coherenceFacets = [12, 22, 24];
     cfg.script8.exportStoryboard = true;
     cfg.script8.exportVector = true;
+
+    cfg.script10 = struct();
+    cfg.script10.primaryUR = cfg.bands.primaryUR;
+    cfg.script10.activityFacets = [12, 14, 16, 18, 20, 22];  % L12–L22 primary cluster grids
+    cfg.script10.coherenceFacets = [12, 14, 16, 18, 20, 22];
+    cfg.script10.exportStoryboard = true;
+    cfg.script10.exportVector = true;
+    cfg.script10.buildPackage = true;  % Package_Manuscript/ Figs 3–7 + tables (excludes Fig1–2)
 
     %% Ridge handoff QC (Script 4)
     cfg.ridgeHandoff.minRidgeCoverage = 0.50;

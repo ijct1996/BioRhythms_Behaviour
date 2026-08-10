@@ -1,5 +1,17 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Script 10 manuscript amendments
+
+### Changed
+- Figs 5/7 panel A: 24 h ZT phase coherence (Script 7 profiles) instead of peri-transition DL/LD curves; B|C keep Script 5 BH-FDR ridge-power / ΔR
+- Activity + coherence grids: figure-level `n = … mice (across photoperiods)` plus per-facet `n = …` (cluster membership can be sparse at early L; union ≠ per panel)
+- Dark-phase shade + lights-off line aligned with Script 9 / collaborator style
+
+### Fixed
+- `cfg.plotMode = 'publication'` now writes `Script10_ManuscriptFigures_Publication` (mode string normalised in runner + `make_output_dirs_`)
+- Fig04/Fig06 (and coherence) `n` mice: count unique `SignalID`/`MouseID` across photoperiods — not `File|SignalID` (File differs per L12–L22 and inflated n above study N=24)
+- Fig04/Fig06 annotation clarified: bare `n = 24 mice` was a facet union and misleading when early photoperiods plot fewer grey traces (UR_3_6 C01 membership)
+
 ## [Unreleased] — Script 7 activity column match (v2.1)
 
 ### Fixed

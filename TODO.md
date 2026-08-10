@@ -85,6 +85,15 @@ Core Scripts 1–3 remain **frozen**. Do not modify Core `run_harmonic_subtracti
 - [x] Primary bands locked: `UR_1_3`, `UR_3_6`
 - [ ] **Checkpoint**: MATLAB smoke — Scripts 4→5 on real Core Handoff cohort
 
+### Scripts 8–10 (figure assembly)
+- [x] `run_extended_script8_publication_figures` — earlier publication composites
+- [x] `run_extended_script9_supplementary_figures` — sex + cluster grids (supplemental)
+- [x] `run_extended_script10_manuscript_figures` — locked Figs 1–7 + `Package_Manuscript/` (Figs 3–7 handoff; excludes Fig1–2)
+  - Fig3C = Script 6 LME forest (co-expression); Figs5/7 A = 24h ZT coherence; B|C = Script 5 BH-FDR stars
+  - `plotMode` → folder: Publication vs Development (hardened)
+  - Non-interactive: `extended_script10_run(cohortRoot, cfg)` with `cfg.plotMode` set
+- [ ] **Checkpoint**: MATLAB smoke — Script 10 publication mode on `C57_LP` → done (`Script10_ManuscriptFigures_Publication`)
+
 ### E3 — Remaining modular ports
 - [ ] Modularise Kent E (replace legacy 600 DPI runner)
 - [ ] Modularise Kent F+G with development/publication plot mode
