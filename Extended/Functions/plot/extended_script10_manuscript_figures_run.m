@@ -10,8 +10,9 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
 %   Fig07 UR_3_6 coherence twin of Fig05 (C01; A-only main composite)
 %
 %   Supplement (not main storyboard / not renumbered mains):
-%     Standalone/Supp_Transitions/ — band-level Script 5 B (ridge power) & C (DeltaR)
-%       stems: Supp_Fig05_B_RidgePower, Supp_Fig05_C_DeltaR (and Fig07 / UR_3_6)
+%     Standalone/Supp_Transitions/ — LD-only paired Pre/Post phase-coherence R bars
+%       stems: Supp_Fig05_LD_PrePost_R, Supp_Fig07_LD_PrePost_R (UR_1_3 / UR_3_6)
+%       BH-FDR stars from Resync_PrimaryStats_BH_FDR (DeltaR>0); cite Script 5 tables
 %     Standalone/Supp/ — UR_3_6 C02 activity + coherence twins (cfg manuscriptClusters)
 %       stems: Supp_Activity_UR36_C02, Supp_Coherence_UR36_C02
 %
@@ -93,14 +94,14 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
     script10_export_tall_copy_(tall4, wide4, outDirs.compositeTall);
     script10_log_(LOG, 'Fig 04 complete (cluster %s)', char(cid13));
 
-    %% Fig05 — UR_1_3 coherence A-only main + band-level B/C supp
+    %% Fig05 — UR_1_3 coherence A-only main + LD Pre/Post R supp
     [manifest, wide5, tall5, supp5] = script10_build_coherence_figure_(data, outDirs, theme, cfg, manifest, ...
         'Fig05', band13, 'Fig05_Coherence_UR13', cid13, true, true, '');
     compositeWide(end + 1, 1) = string(wide5); %#ok<AGROW>
     packageFigs(end + 1, 1) = string(wide5); %#ok<AGROW>
     packageSupp = [packageSupp; supp5(:)]; %#ok<AGROW>
     script10_export_tall_copy_(tall5, wide5, outDirs.compositeTall);
-    script10_log_(LOG, 'Fig 05 complete (A-only main; B/C → Supp_Transitions)');
+    script10_log_(LOG, 'Fig 05 complete (A-only main; LD Pre/Post R → Supp_Transitions)');
 
     %% Fig06 — UR_3_6 activity twin (C01)
     band36 = data.primaryUR(min(2, numel(data.primaryUR)));
@@ -113,14 +114,14 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
     script10_export_tall_copy_(tall6, wide6, outDirs.compositeTall);
     script10_log_(LOG, 'Fig 06 complete (cluster %s)', char(cid36));
 
-    %% Fig07 — UR_3_6 coherence twin (C01; A-only + B/C supp)
+    %% Fig07 — UR_3_6 coherence twin (C01; A-only + LD Pre/Post R supp)
     [manifest, wide7, tall7, supp7] = script10_build_coherence_figure_(data, outDirs, theme, cfg, manifest, ...
         'Fig07', band36, 'Fig07_Coherence_UR36', cid36, true, true, '');
     compositeWide(end + 1, 1) = string(wide7); %#ok<AGROW>
     packageFigs(end + 1, 1) = string(wide7); %#ok<AGROW>
     packageSupp = [packageSupp; supp7(:)]; %#ok<AGROW>
     script10_export_tall_copy_(tall7, wide7, outDirs.compositeTall);
-    script10_log_(LOG, 'Fig 07 complete (A-only main; B/C → Supp_Transitions)');
+    script10_log_(LOG, 'Fig 07 complete (A-only main; LD Pre/Post R → Supp_Transitions)');
 
     %% Supp extras — UR_3_6 C02 (rank 2) activity + coherence (not main Figs / storyboard)
     suppRanks36 = script10_manuscript_supp_ranks_(cfg, band36);
@@ -179,9 +180,9 @@ function data = script10_load_data_(paths, cfg)
     data.lmeCoefPower = script10_read_sheet_(paths.lmeInferenceXlsx, 'LME_Coef_Power_BH_FDR');
     data.lmeFdr = script10_read_sheet_(paths.lmeInferenceXlsx, 'LME_Inference_BH_FDR');
     data.binnedCoherence = script10_read_sheet_(paths.resyncXlsx, 'BinnedCoherence');
-    data.ridgePowerFdr = script10_read_sheet_(paths.resyncXlsx, 'RidgePowerStats_BH_FDR');
+    data.candidateDeltaR = script10_read_sheet_(paths.resyncXlsx, 'CandidateDeltaR');
+    data.deltaRSummary = script10_read_sheet_(paths.resyncXlsx, 'DeltaR_Summary');
     data.resyncPrimaryFdr = script10_read_sheet_(paths.resyncXlsx, 'Resync_PrimaryStats_BH_FDR');
-    data.resyncGradient = script10_read_sheet_(paths.resyncGradientXlsx, 'Summary');
     data.clusterSummary = script10_read_sheet_(paths.profilesXlsx, 'ClusterSummary');
     data.activityZT = script10_read_sheet_(paths.profilesXlsx, 'ActivityComponent_24h');
     data.phase24 = script10_read_sheet_(paths.profilesXlsx, 'PhaseCoherence_24h');
@@ -627,10 +628,10 @@ function [manifest, widePath, tallPath] = script10_build_activity_figure_(data, 
     end
 end
 
-%% Fig05 / Fig07 — 24h ZT coherence (A main) + optional band-level B/C supp (BH-FDR)
+%% Fig05 / Fig07 — 24h ZT coherence (A main) + optional LD Pre/Post R supp (BH-FDR)
 function [manifest, widePath, tallPath, suppPaths] = script10_build_coherence_figure_(data, outDirs, theme, cfg, manifest, figId, bandName, compositeStem, clusterId, writeComposite, exportTransitions, standSubdir)
 %SCRIPT10_BUILD_COHERENCE_FIGURE_ Panel A = 24h ZT coherence grid (main composite when writeComposite).
-%   B/C (ridge power / DeltaR) are band-level Script 5 standalones under Supp_Transitions when
+%   LD Pre/Post R bars are band-level Script 5 standalones under Supp_Transitions when
 %   exportTransitions=true — never glued into Wide/Tall; not duplicated per cluster.
 %   clusterId: ClusterID; empty → primary_cluster_
     if nargin < 9, clusterId = ""; end
@@ -648,8 +649,6 @@ function [manifest, widePath, tallPath, suppPaths] = script10_build_coherence_fi
     pp = data.ppOrder;
     ppPlot = pp(pp <= 22);
     bandName = string(bandName);
-    grad = data.resyncGradient;
-    if isempty(grad), grad = table(); end
 
     if strlength(string(clusterId)) == 0
         clusterId = script10_primary_cluster_(data.clusterSummary, bandName);
@@ -710,24 +709,30 @@ function [manifest, widePath, tallPath, suppPaths] = script10_build_coherence_fi
     widePath = '';
     tallPath = '';
     if writeComposite
-        % A-only Wide/Tall (same pattern as activity figures — do not glue B/C)
+        % A-only Wide/Tall (same pattern as activity figures — do not glue transition supp)
         widePath = fullfile(outDirs.compositeWide, [compositeStem theme.ext]);
         copyfile(standA{1}, widePath, 'f');
         tallPath = fullfile(outDirs.compositeTall, [compositeStem theme.ext]);
         copyfile(standA{1}, tallPath, 'f');
         manifest = script10_manifest_add_(manifest, figId, 'Composite', widePath, '16:9', ...
-            sprintf('24h ZT coherence (A only) for %s. B/C Script 5 gradients are supplemental.', primaryFace), ...
-            'Script 7', 'Tol', 'Main composite = panel A; B|C under Supp_Transitions.');
+            sprintf('24h ZT coherence (A only) for %s. LD Pre/Post R bars are supplemental.', primaryFace), ...
+            'Script 7', 'Tol', 'Main composite = panel A; LD Pre/Post R under Supp_Transitions.');
     end
 
-    %% B / C — band-level transition gradients (once per band; Supp_Transitions)
+    %% LD Pre/Post R — band-level (once per band; Supp_Transitions)
     if exportTransitions
-        [manifest, suppPaths] = script10_export_transition_supp_(data, outDirs, theme, manifest, figId, bandName, grad, ppPlot, pal);
+        % Prefer locked coherence facets (L12–L22) when available
+        if ~isempty(facets)
+            ppPlot = double(facets(:))';
+            ppPlot = ppPlot(ppPlot <= 22);
+        end
+        [manifest, suppPaths] = script10_export_transition_supp_(data, outDirs, theme, manifest, figId, bandName, ppPlot, pal);
     end
 end
 
-function [manifest, suppPaths] = script10_export_transition_supp_(data, outDirs, theme, manifest, figId, bandName, grad, ppPlot, pal)
-%SCRIPT10_EXPORT_TRANSITION_SUPP_ Band-level B ridge-power + C DeltaR under Supp_Transitions.
+function [manifest, suppPaths] = script10_export_transition_supp_(data, outDirs, theme, manifest, figId, bandName, ppPlot, pal)
+%SCRIPT10_EXPORT_TRANSITION_SUPP_ LD-only Pre/Post phase-coherence R bars under Supp_Transitions.
+%   Exploratory display of mean R_pre / R_post; confirmatory stars from Script 5 BH-FDR (DeltaR>0).
     suppPaths = strings(0, 1);
     bandName = string(bandName);
     bandCaption = script10_band_display_(bandName, 'plain');
@@ -735,68 +740,183 @@ function [manifest, suppPaths] = script10_export_transition_supp_(data, outDirs,
     suppDir = fullfile(outDirs.standalone, 'Supp_Transitions');
     extended_period_gate_ensure_dir(suppDir);
 
-    stemB = sprintf('Supp_%s_B_RidgePower', figTag);
-    figB = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 640 480]);
-    axB = axes(figB); hold(axB, 'on');
-    script10_plot_transition_metric_(axB, grad, bandName, 'RidgePower_PostMinusPre', ppPlot, pal, theme);
-    script10_star_bh_fdr_(axB, grad, data.ridgePowerFdr, bandName, 'RidgePower_PostMinusPre', ppPlot, pal);
-    xlabel(axB, 'Photoperiod', 'FontWeight', 'bold');
-    ylabel(axB, 'Ridge power (post − pre)', 'FontWeight', 'bold');
-    title(axB, 'B  Ridge power', 'FontWeight', 'bold', 'Interpreter', 'none');
-    script10_style_axes_(axB, theme);
-    text(axB, 0.98, 0.02, '* BH-FDR', 'Units', 'normalized', ...
+    stem = sprintf('Supp_%s_LD_PrePost_R', figTag);
+    fig = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 720 480]);
+    ax = axes(fig); hold(ax, 'on');
+    script10_plot_ld_prepost_r_bars_(ax, data, bandName, ppPlot, pal, theme);
+    xlabel(ax, 'Photoperiod', 'FontWeight', 'bold');
+    ylabel(ax, 'Phase coherence R', 'FontWeight', 'bold');
+    title(ax, sprintf('LD pre/post R — %s', bandCaption), 'FontWeight', 'bold', 'Interpreter', 'none');
+    script10_style_axes_(ax, theme);
+    text(ax, 0.98, 0.02, '* BH-FDR \DeltaR>0 (LD)', 'Units', 'normalized', ...
         'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', ...
-        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35]);
-    pathsB = script10_export_figure_(figB, fullfile(suppDir, stemB), theme, {theme.ext, '.pdf'});
-    close(figB);
-    suppPaths(end + 1, 1) = string(fullfile(suppDir, stemB)); %#ok<AGROW>
-    manifest = script10_manifest_add_(manifest, figId, 'B', pathsB{1}, 'standalone', ...
-        sprintf('Ridge-power post−pre vs photoperiod (%s); BH-FDR stars.', bandCaption), ...
-        'Script 5', 'Tol DL/LD', 'Confirmatory transition resync — supplemental (not main composite).');
-
-    stemC = sprintf('Supp_%s_C_DeltaR', figTag);
-    figC = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 640 480]);
-    axC = axes(figC); hold(axC, 'on');
-    script10_plot_transition_metric_(axC, grad, bandName, 'DeltaR', ppPlot, pal, theme);
-    script10_star_bh_fdr_(axC, grad, data.resyncPrimaryFdr, bandName, 'DeltaR', ppPlot, pal);
-    xlabel(axC, 'Photoperiod', 'FontWeight', 'bold');
-    ylabel(axC, '\DeltaR (post − pre)', 'FontWeight', 'bold');
-    title(axC, 'C  \DeltaR', 'FontWeight', 'bold', 'Interpreter', 'tex');
-    script10_style_axes_(axC, theme);
-    text(axC, 0.98, 0.02, '* BH-FDR', 'Units', 'normalized', ...
-        'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', ...
-        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35]);
-    pathsC = script10_export_figure_(figC, fullfile(suppDir, stemC), theme, {theme.ext, '.pdf'});
-    close(figC);
-    suppPaths(end + 1, 1) = string(fullfile(suppDir, stemC)); %#ok<AGROW>
-    manifest = script10_manifest_add_(manifest, figId, 'C', pathsC{1}, 'standalone', ...
-        sprintf('\\DeltaR post−pre vs photoperiod (%s); BH-FDR stars.', bandCaption), ...
-        'Script 5', 'Tol DL/LD', 'Confirmatory transition resync — supplemental; cite Script 5 FDR tables in text.');
+        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35], ...
+        'Interpreter', 'tex');
+    pathsOut = script10_export_figure_(fig, fullfile(suppDir, stem), theme, {theme.ext, '.pdf'});
+    close(fig);
+    suppPaths(end + 1, 1) = string(fullfile(suppDir, stem)); %#ok<AGROW>
+    manifest = script10_manifest_add_(manifest, figId, 'LD_PrePost_R', pathsOut{1}, 'standalone', ...
+        sprintf('LD-only Pre/Post phase-coherence R vs photoperiod (%s); BH-FDR stars (DeltaR>0).', bandCaption), ...
+        'Script 5', 'Tol Pre/Post', ...
+        'Confirmatory transition resync — supplemental; cite Resync_PrimaryStats_BH_FDR in text. No ridge-power / DeltaR gradient figures.');
 end
 
-function script10_star_bh_fdr_(ax, grad, fdrTable, bandName, metricName, ppPlot, pal)
-%SCRIPT10_STAR_BH_FDR_ Star gradient points with Significant_BH for matching keys.
-    if isempty(fdrTable) || isempty(grad), return; end
-    if ~ismember('Significant_BH', fdrTable.Properties.VariableNames), return; end
+function script10_plot_ld_prepost_r_bars_(ax, data, bandName, ppPlot, pal, theme)
+%SCRIPT10_PLOT_LD_PREPOST_R_BARS_ Grouped Pre/Post R bars (LD) + SEM + BH-FDR brackets.
     hold(ax, 'on');
-    for tr = ["DL", "LD"]
-        col = script10_transition_colour_(pal, tr);
-        for pi = 1:numel(ppPlot)
-            pp = ppPlot(pi);
-            idxF = fdrTable.Photoperiod_h == pp & string(fdrTable.BandName) == string(bandName) & ...
-                string(fdrTable.TransitionType) == tr;
-            if ~any(idxF), continue; end
-            sig = any(logical(fdrTable.Significant_BH(idxF)));
-            if ~sig, continue; end
-            idxG = grad.Photoperiod_h == pp & string(grad.TransitionType) == tr & ...
-                string(grad.Metric) == metricName & string(grad.BandName) == string(bandName);
-            if ~any(idxG), continue; end
-            y = grad.MeanEffect(find(idxG, 1));
-            if ~isfinite(y), continue; end
-            plot(ax, pi, y, 'k*', 'MarkerSize', 10, 'LineWidth', 1.2, 'HandleVisibility', 'off');
-            % subtle coloured halo behind star
-            plot(ax, pi, y, 'o', 'Color', col, 'MarkerSize', 10, 'LineWidth', 1.0, 'HandleVisibility', 'off');
+    set(ax, 'Color', 'w');
+    nPP = numel(ppPlot);
+    if nPP < 1
+        text(ax, 0.5, 0.5, 'No photoperiods', 'Units', 'normalized', ...
+            'HorizontalAlignment', 'center', 'FontName', theme.fontName);
+        return;
+    end
+
+    [meanPre, meanPost, semPre, semPost, ~] = script10_ld_prepost_r_means_(data, bandName, ppPlot);
+    Y = [meanPre(:), meanPost(:)];
+    if ~any(isfinite(Y(:)))
+        text(ax, 0.5, 0.5, 'No LD Pre/Post R data', 'Units', 'normalized', ...
+            'HorizontalAlignment', 'center', 'FontName', theme.fontName);
+        set(ax, 'XTick', 1:nPP, 'XTickLabel', arrayfun(@(v) char(script10_pp_label_(v)), ppPlot, 'UniformOutput', false));
+        return;
+    end
+
+    colPre = pal.base(7, :);   % Tol grey — Pre
+    colPost = pal.ld;          % Tol red — Post (LD role)
+    b = bar(ax, 1:nPP, Y, 0.85, 'grouped', 'EdgeColor', 'k', 'LineWidth', 0.6);
+    if numel(b) >= 1
+        b(1).FaceColor = colPre;
+        b(1).DisplayName = 'Pre';
+    end
+    if numel(b) >= 2
+        b(2).FaceColor = colPost;
+        b(2).DisplayName = 'Post';
+    end
+
+    % Error bars at bar centres
+    for bi = 1:min(2, numel(b))
+        xEnds = b(bi).XEndPoints;
+        if bi == 1
+            y = meanPre; e = semPre;
+        else
+            y = meanPost; e = semPost;
         end
+        for pi = 1:nPP
+            if ~isfinite(y(pi)) || ~isfinite(e(pi)) || e(pi) <= 0, continue; end
+            errorbar(ax, xEnds(pi), y(pi), e(pi), 'k', 'LineStyle', 'none', ...
+                'LineWidth', 1.0, 'CapSize', 6, 'HandleVisibility', 'off');
+        end
+    end
+
+    % BH-FDR stars / brackets for LD DeltaR>0
+    fdr = data.resyncPrimaryFdr;
+    sp = semPre(:); sp(~isfinite(sp)) = 0;
+    sq = semPost(:); sq(~isfinite(sq)) = 0;
+    yMaxData = max([meanPre(:) + sp; meanPost(:) + sq], [], 'omitnan');
+    if ~isfinite(yMaxData) || yMaxData <= 0, yMaxData = 0.5; end
+    yLimTop = max(yMaxData * 1.25, 0.2);
+    pad = 0.04 * yLimTop;
+    if ~isempty(fdr) && ismember('Significant_BH', fdr.Properties.VariableNames) && numel(b) >= 2
+        xPre = b(1).XEndPoints;
+        xPost = b(2).XEndPoints;
+        for pi = 1:nPP
+            pp = ppPlot(pi);
+            idxF = fdr.Photoperiod_h == pp & string(fdr.BandName) == string(bandName) & ...
+                string(fdr.TransitionType) == "LD";
+            if ~any(idxF), continue; end
+            sig = any(logical(fdr.Significant_BH(idxF)));
+            if ~sig, continue; end
+            yTop = max([meanPre(pi) + sp(pi), meanPost(pi) + sq(pi)], [], 'omitnan');
+            if ~isfinite(yTop), continue; end
+            y1 = yTop + pad;
+            y2 = y1 + pad;
+            plot(ax, [xPre(pi), xPre(pi), xPost(pi), xPost(pi)], [y1, y2, y2, y1], ...
+                'k-', 'LineWidth', 1.0, 'HandleVisibility', 'off');
+            text(ax, mean([xPre(pi), xPost(pi)]), y2 + 0.5 * pad, '*', ...
+                'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', ...
+                'FontName', theme.fontName, 'FontSize', 14, 'FontWeight', 'bold', ...
+                'HandleVisibility', 'off');
+            yLimTop = max(yLimTop, y2 + 2 * pad);
+        end
+    end
+
+    set(ax, 'XTick', 1:nPP, 'XTickLabel', arrayfun(@(v) char(script10_pp_label_(v)), ppPlot, 'UniformOutput', false), ...
+        'XLim', [0.4, nPP + 0.6], 'YLim', [0 yLimTop]);
+    lg = legend(ax, 'Location', 'northwest', 'Box', 'off');
+    if ~isempty(lg)
+        set(lg, 'FontName', theme.fontName, 'FontSize', 10);
+    end
+end
+
+function [meanPre, meanPost, semPre, semPost, nCand] = script10_ld_prepost_r_means_(data, bandName, ppPlot)
+%SCRIPT10_LD_PREPOST_R_MEANS_ Mean ± SEM R_Pre/R_Post for LD (candidate-level preferred).
+%   Primary: CandidateDeltaR (PassN_Pre & PassN_Post). Fallback: DeltaR_Summary group means.
+    nPP = numel(ppPlot);
+    meanPre = nan(nPP, 1);
+    meanPost = nan(nPP, 1);
+    semPre = nan(nPP, 1);
+    semPost = nan(nPP, 1);
+    nCand = zeros(nPP, 1);
+
+    CD = table();
+    if isfield(data, 'candidateDeltaR') && ~isempty(data.candidateDeltaR)
+        CD = data.candidateDeltaR;
+    end
+    useCand = ~isempty(CD) && all(ismember({'R_Pre','R_Post','Photoperiod_h','BandName','TransitionType'}, ...
+        CD.Properties.VariableNames));
+
+    if useCand
+        idx = string(CD.TransitionType) == "LD" & string(CD.BandName) == string(bandName);
+        if ismember('PassN_Pre', CD.Properties.VariableNames) && ismember('PassN_Post', CD.Properties.VariableNames)
+            idx = idx & logical(CD.PassN_Pre) & logical(CD.PassN_Post);
+        end
+        C = CD(idx, :);
+        for pi = 1:nPP
+            rows = C(C.Photoperiod_h == ppPlot(pi), :);
+            if isempty(rows), continue; end
+            rp = double(rows.R_Pre); rp = rp(isfinite(rp));
+            rq = double(rows.R_Post); rq = rq(isfinite(rq));
+            nCand(pi) = max(numel(rp), numel(rq));
+            if ~isempty(rp)
+                meanPre(pi) = mean(rp, 'omitnan');
+                if numel(rp) > 1
+                    semPre(pi) = std(rp, 0, 'omitnan') / sqrt(numel(rp));
+                else
+                    semPre(pi) = 0;
+                end
+            end
+            if ~isempty(rq)
+                meanPost(pi) = mean(rq, 'omitnan');
+                if numel(rq) > 1
+                    semPost(pi) = std(rq, 0, 'omitnan') / sqrt(numel(rq));
+                else
+                    semPost(pi) = 0;
+                end
+            end
+        end
+        if any(isfinite(meanPre) | isfinite(meanPost))
+            return;
+        end
+    end
+
+    % Fallback: group-level DeltaR_Summary (no candidate SEM)
+    DS = table();
+    if isfield(data, 'deltaRSummary') && ~isempty(data.deltaRSummary)
+        DS = data.deltaRSummary;
+    end
+    if isempty(DS) || ~all(ismember({'R_Pre','R_Post','Photoperiod_h','BandName','TransitionType'}, ...
+            DS.Properties.VariableNames))
+        return;
+    end
+    for pi = 1:nPP
+        idx = DS.Photoperiod_h == ppPlot(pi) & string(DS.BandName) == string(bandName) & ...
+            string(DS.TransitionType) == "LD";
+        if ~any(idx), continue; end
+        meanPre(pi) = double(DS.R_Pre(find(idx, 1)));
+        meanPost(pi) = double(DS.R_Post(find(idx, 1)));
+        semPre(pi) = 0;
+        semPost(pi) = 0;
+        nCand(pi) = 1;
     end
 end
 
@@ -848,7 +968,7 @@ function pkgRoot = script10_build_package_(paths, outDirs, packageFigs, packageS
         end
     end
 
-    % Supplemental figures → Figures/Supp/ (B/C transitions + C02 grids)
+    % Supplemental figures → Figures/Supp/ (LD Pre/Post R + C02 grids)
     for i = 1:numel(packageSupp)
         src = char(packageSupp(i));
         if isfolder(src)
@@ -946,11 +1066,12 @@ function script10_write_package_readme_(pkgRoot, theme) %#ok<INUSD>
     fprintf(fid, '## Included\n\n');
     fprintf(fid, '- **Figures/** - Fig03-Fig07 main composites (Wide + optional Tall/Standalone)\n');
     fprintf(fid, '- **Figures/Supp/** - supplemental panels (not renumbered mains):\n');
-    fprintf(fid, '  - `Supp_Transitions/` - Fig05/07 **B** ridge-power + **C** DeltaR (Script 5 BH-FDR)\n');
+    fprintf(fid, '  - `Supp_Transitions/` - Fig05/07 **LD Pre/Post R** bars (Script 5 BH-FDR stars)\n');
     fprintf(fid, '  - `Supp/` - UR_3_6 **C02** activity + coherence twins\n');
     fprintf(fid, '- **Tables/** - co-expression descriptives, LME coefficients (BH-FDR),\n');
-    fprintf(fid, '  transition resync FDR + BinnedCoherence, gradient Summary, profile ClusterSummary / activity\n');
-    fprintf(fid, '  (Script 5 FDR tables remain for main-text citation even though B/C are off main Figs 5/7)\n');
+    fprintf(fid, '  transition resync FDR (`Resync_PrimaryStats_BH_FDR`) + BinnedCoherence, gradient Summary,\n');
+    fprintf(fid, '  profile ClusterSummary / activity (Script 5 FDR tables for main-text citation;\n');
+    fprintf(fid, '  ridge-power / DeltaR gradient figures are not exported)\n');
     fprintf(fid, '- **Manifest/** - figure order, captions, source scripts\n\n');
     fprintf(fid, '## Excluded (still in full Script10 tree)\n\n');
     fprintf(fid, '- **Fig01** - circadian characteristics placeholder (collaborator external)\n');
@@ -962,10 +1083,10 @@ function script10_write_package_readme_(pkgRoot, theme) %#ok<INUSD>
     fprintf(fid, '| **Fig03C** | Script 6 LME Photoperiod_h beta+/-CI (BH-FDR) | **Confirmatory co-expression** |\n');
     fprintf(fid, '| **Figs 04 & 06** | Script 7 profiles (C01) | Primary-cluster 24h activity display |\n');
     fprintf(fid, '| **Figs 05 & 07** | Script 7 24h ZT coherence (**A only** on main) | Descriptive daily phase organisation |\n');
-    fprintf(fid, '| **Supp B|C (Fig05/07)** | Script 5 BH-FDR (ridge power / DeltaR) | **Confirmatory transition resync** (cite in text; panels supplemental) |\n');
+    fprintf(fid, '| **Supp LD Pre/Post R (Fig05/07)** | Script 5 BH-FDR DeltaR>0 (LD bars) | **Confirmatory transition resync** (cite tables; panels supplemental) |\n');
     fprintf(fid, '| **Supp UR36 C02** | Script 7 profiles (ClusterRank 2) | Extra cluster face; not main Fig 8/9 |\n\n');
     fprintf(fid, 'Do not conflate Fig 3 LME with Script 5 transition stats.\n');
-    fprintf(fid, 'Main Figs 5/7 composites are coherence grids only; B/C live under Figures/Supp/Supp_Transitions/.\n');
+    fprintf(fid, 'Main Figs 5/7 composites are coherence grids only; LD Pre/Post R live under Figures/Supp/Supp_Transitions/.\n');
     fprintf(fid, 'Sex-stratified panels remain Script 9 (supplemental).\n');
     fclose(fid);
 
@@ -1210,30 +1331,6 @@ function yMax = script10_coherence_ymax_(Bin, facets, bandName, pal)
     end
 end
 
-function script10_plot_transition_metric_(ax, grad, bands, metricName, ppPlot, pal, theme)
-    if isempty(grad) || ~ismember('Metric', grad.Properties.VariableNames), return; end
-    x = 1:numel(ppPlot);
-    set(ax, 'XTick', x, 'XTickLabel', arrayfun(@(v) char(script10_pp_label_(v)), ppPlot, 'UniformOutput', false));
-    script10_yline_zero_(ax);
-    hold(ax, 'on');
-    for tr = ["DL", "LD"]
-        col = script10_transition_colour_(pal, tr);
-        vals = nan(numel(ppPlot), 1);
-        for pi = 1:numel(ppPlot)
-            idx = grad.Photoperiod_h == ppPlot(pi) & string(grad.TransitionType) == tr & ...
-                string(grad.Metric) == metricName & string(grad.BandName) == bands(1);
-            if any(idx)
-                vals(pi) = grad.MeanEffect(find(idx, 1));
-            end
-        end
-        plot(ax, x, vals, '-o', 'Color', col, 'LineWidth', 2.2, 'MarkerSize', 7, 'MarkerFaceColor', col);
-        if any(isfinite(vals))
-            ip = find(isfinite(vals), 1, 'last');
-            script10_direct_line_label_(ax, ip, vals(ip), char(tr), col, theme, false);
-        end
-    end
-end
-
 function hasData = script10_plot_coherence_facet_(ax, Bin, photoperiod_h, bandName, pal, theme)
     hasData = false;
     if isempty(Bin), return; end
@@ -1343,15 +1440,14 @@ function script10_write_figure_manifest_md_(outRoot, manifest)
     fprintf(fid, '### Supplemental (not main storyboard / not renumbered mains)\n\n');
     fprintf(fid, '| Asset | Content | Source |\n');
     fprintf(fid, '|-------|---------|--------|\n');
-    fprintf(fid, '| `Standalone/Supp_Transitions/Supp_Fig05_B_RidgePower` | UR_1_3 ridge-power gradient + BH-FDR | Script 5 |\n');
-    fprintf(fid, '| `Standalone/Supp_Transitions/Supp_Fig05_C_DeltaR` | UR_1_3 DeltaR gradient + BH-FDR | Script 5 |\n');
-    fprintf(fid, '| `Standalone/Supp_Transitions/Supp_Fig07_B_RidgePower` | UR_3_6 ridge-power gradient + BH-FDR | Script 5 |\n');
-    fprintf(fid, '| `Standalone/Supp_Transitions/Supp_Fig07_C_DeltaR` | UR_3_6 DeltaR gradient + BH-FDR | Script 5 |\n');
+    fprintf(fid, '| `Standalone/Supp_Transitions/Supp_Fig05_LD_PrePost_R` | UR_1_3 LD Pre/Post R bars + BH-FDR | Script 5 |\n');
+    fprintf(fid, '| `Standalone/Supp_Transitions/Supp_Fig07_LD_PrePost_R` | UR_3_6 LD Pre/Post R bars + BH-FDR | Script 5 |\n');
     fprintf(fid, '| `Standalone/Supp/Supp_Activity_UR36_C02` | UR_3_6 ClusterRank 2 activity twin | Script 7 |\n');
     fprintf(fid, '| `Standalone/Supp/Supp_Coherence_UR36_C02` | UR_3_6 ClusterRank 2 coherence twin | Script 7 |\n\n');
     fprintf(fid, 'Cluster lock: `cfg.script10.manuscriptClusters` (ClusterRank; optional period-window warn).\n');
-    fprintf(fid, 'Main Figs 4-7 = C01 only; B/C and C02 are Package `Figures/Supp/`.\n');
-    fprintf(fid, 'Cite Script 5 FDR tables in text for transition claims (panels supplemental).\n');
+    fprintf(fid, 'Main Figs 4-7 = C01 only; LD Pre/Post R and C02 are Package `Figures/Supp/`.\n');
+    fprintf(fid, 'Cite Script 5 `Resync_PrimaryStats_BH_FDR` in text for transition claims (panels supplemental).\n');
+    fprintf(fid, 'Ridge-power / DeltaR gradient figures are not exported (tables remain in Package).\n');
     fprintf(fid, 'Sex after Fig 2 -> Script 9 supplemental.\n\n');
     fprintf(fid, '## Manifest rows\n\n');
     for i = 1:height(manifest)
@@ -1371,12 +1467,14 @@ end
 
 function T = script10_colour_key_table_()
     roles = {
-        'DL (lights-on)', '#4477AA', 'Transition panels only';
-        'LD (lights-off)', '#EE6677', 'Transition panels only';
+        'LD Pre R', '#BBBBBB', 'Supp LD Pre/Post R bars';
+        'LD Post R', '#EE6677', 'Supp LD Pre/Post R bars (Tol LD)';
+        'DL (lights-on)', '#4477AA', 'Legacy / peri-transition traces if present';
+        'LD (lights-off)', '#EE6677', 'Transition colour role';
         'UR 1–3 h', '#66CCEE', 'Band panels (key UR_1_3)';
         'UR 3–6 h', '#AA3377', 'Band panels (key UR_3_6)';
         'CR 20–28 h', '#BBBBBB', 'CR traces';
-        'BH-FDR star', 'black *', 'Script 5 (Figs 5/7) or Script 6 (Fig 3C)';
+        'BH-FDR star', 'black *', 'Script 5 LD DeltaR>0 (Supp) or Script 6 (Fig 3C)';
         'Scalograms', 'Jet', 'Fig02 RAW + HSub residual'};
     T = cell2table(roles, 'VariableNames', {'Role', 'Colour', 'Usage'});
 end

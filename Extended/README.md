@@ -79,12 +79,12 @@ extended_script10_run(cohort, cfg);   % batch-safe (no questdlg)
 | 7 | UR_3_6 coherence twin of Fig 5 (**A only**) |
 
 **Supplemental (Package `Figures/Supp/`, not renumbered mains):**
-- `Supp_Transitions/` — Fig05/07 **B** ridge-power + **C** ΔR (Script 5 BH-FDR; cite tables in text)
+- `Supp_Transitions/` — Fig05/07 **LD Pre/Post R** bars (Script 5 BH-FDR ΔR>0 stars; cite `Resync_PrimaryStats_BH_FDR` in text)
 - `Supp/` — UR_3_6 **C02** activity + coherence twins (`cfg.script10.manuscriptClusters`)
 
 `Package_Manuscript/` includes Figs **3–7** + Supp + key tables; **excludes** Fig 1 and Fig 2. Sex after Fig 2 stays Script 9 supplemental.
 
-**Do not conflate:** Fig 3C = co-expression LME; Script 5 transition FDR = confirmatory resync (B/C supplemental, not glued onto Figs 5/7).
+**Do not conflate:** Fig 3C = co-expression LME; Script 5 transition FDR = confirmatory resync (LD Pre/Post R supplemental, not glued onto Figs 5/7). Ridge-power / ΔR gradient figures are not exported.
 
 ## What Core already covers (do not rerun)
 

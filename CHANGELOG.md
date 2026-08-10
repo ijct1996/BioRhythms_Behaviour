@@ -3,7 +3,8 @@
 ## [Unreleased] — Script 10 manuscript amendments
 
 ### Changed
-- Figs 5/7 **main composites = panel A only** (24h ZT coherence grid); B (ridge power) and C (ΔR) moved to `Standalone/Supp_Transitions/` (`Supp_Fig05/07_B_*`, `_C_*`) — not glued into Wide/Tall
+- Figs 5/7 **main composites = panel A only** (24h ZT coherence grid); transition supp = **LD Pre/Post R** bars (`Supp_Fig05/07_LD_PrePost_R`) under `Standalone/Supp_Transitions/` — not glued into Wide/Tall
+- Dropped Script 10 export of `Supp_Fig05/07_B_RidgePower` and `_C_DeltaR` gradient figures (Script 5 FDR tables remain in Package for citation)
 - UR_3_6 **C02** (ClusterRank 2, ~4.25–5.0 h) activity + coherence twins as Supp extras (`Supp_Activity_UR36_C02`, `Supp_Coherence_UR36_C02`); mains stay C01
 - `cfg.script10.manuscriptClusters` lock: resolve by ClusterRank (+ optional period-window warn); builders accept explicit ClusterID
 - Package_Manuscript: main Figs 3–7 unchanged set; Supp under `Figures/Supp/`; Script 5 FDR tables still packaged for text citation

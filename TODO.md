@@ -89,7 +89,7 @@ Core Scripts 1–3 remain **frozen**. Do not modify Core `run_harmonic_subtracti
 - [x] `run_extended_script8_publication_figures` — earlier publication composites
 - [x] `run_extended_script9_supplementary_figures` — sex + cluster grids (supplemental)
 - [x] `run_extended_script10_manuscript_figures` — locked Figs 1–7 + `Package_Manuscript/` (Figs 3–7 handoff; excludes Fig1–2)
-  - Fig3C = Script 6 LME forest (co-expression); Figs5/7 **A only** on main (24h ZT coherence); B|C → `Supp_Transitions` (Script 5 BH-FDR; cite tables in text)
+  - Fig3C = Script 6 LME forest (co-expression); Figs5/7 **A only** on main (24h ZT coherence); LD Pre/Post R → `Supp_Transitions` (Script 5 BH-FDR; cite tables in text)
   - UR_3_6 C02 activity+coherence → `Standalone/Supp/` via `cfg.script10.manuscriptClusters` (not main Figs)
   - `plotMode` → folder: Publication vs Development (hardened)
   - Non-interactive: `extended_script10_run(cohortRoot, cfg)` with `cfg.plotMode` set
