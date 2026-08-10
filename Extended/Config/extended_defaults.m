@@ -80,6 +80,18 @@ function cfg = extended_defaults()
     cfg.script10.exportStoryboard = true;
     cfg.script10.exportVector = true;
     cfg.script10.buildPackage = true;  % Package_Manuscript/ Figs 3–7 + tables (excludes Fig1–2)
+    % Manuscript cluster lock (Figs 4–7 + Supp extras).
+    % Resolve by ClusterRank from ClusterSummary (stable); optional period-window check.
+    %   UR_1_3 → rank 1 main only
+    %   UR_3_6 → rank 1 main + rank 2 as Standalone/Supp extras (not main Fig 8/9)
+    cfg.script10.manuscriptClusters = struct();
+    cfg.script10.manuscriptClusters.UR_1_3 = struct('mainRanks', 1);
+    cfg.script10.manuscriptClusters.UR_1_3.suppRanks = zeros(1, 0);  % main only
+    cfg.script10.manuscriptClusters.UR_3_6 = struct( ...
+        'mainRanks', 1, ...
+        'suppRanks', 2, ...
+        'expectPeriodRanks', [1, 2], ...
+        'expectPeriod_h', [3.0, 4.0; 4.25, 5.0]);  % rows ↔ expectPeriodRanks (warn only)
 
     %% Ridge handoff QC (Script 4)
     cfg.ridgeHandoff.minRidgeCoverage = 0.50;

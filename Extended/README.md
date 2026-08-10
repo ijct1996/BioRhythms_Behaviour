@@ -73,14 +73,18 @@ extended_script10_run(cohort, cfg);   % batch-safe (no questdlg)
 | 1 | Circadian characteristics — **placeholder** (collaborator external) |
 | 2 | Multiscale RAW + HSub residual **Female\|Male** + CarryForward retention E |
 | 3 | Co-expression: A abs power; B descriptive Δ; **C LME forest** (Script 6) |
-| 4 | UR_1_3 Z-scored activity L12–L22 |
-| 5 | UR_1_3 DL/LD coherence + ridge/ΔR with **Script 5 BH-FDR stars** |
-| 6 | UR_3_6 activity twin of Fig 4 |
-| 7 | UR_3_6 coherence twin of Fig 5 |
+| 4 | UR_1_3 Z-scored activity L12–L22 (**C01**) |
+| 5 | UR_1_3 **24h ZT coherence (A only)** on main |
+| 6 | UR_3_6 activity twin of Fig 4 (**C01**) |
+| 7 | UR_3_6 coherence twin of Fig 5 (**A only**) |
 
-`Package_Manuscript/` includes Figs **3–7** + key tables; **excludes** Fig 1 and Fig 2. Sex after Fig 2 stays Script 9 supplemental.
+**Supplemental (Package `Figures/Supp/`, not renumbered mains):**
+- `Supp_Transitions/` — Fig05/07 **B** ridge-power + **C** ΔR (Script 5 BH-FDR; cite tables in text)
+- `Supp/` — UR_3_6 **C02** activity + coherence twins (`cfg.script10.manuscriptClusters`)
 
-**Do not conflate:** Fig 3C = co-expression LME; Figs 5/7 = transition resync FDR.
+`Package_Manuscript/` includes Figs **3–7** + Supp + key tables; **excludes** Fig 1 and Fig 2. Sex after Fig 2 stays Script 9 supplemental.
+
+**Do not conflate:** Fig 3C = co-expression LME; Script 5 transition FDR = confirmatory resync (B/C supplemental, not glued onto Figs 5/7).
 
 ## What Core already covers (do not rerun)
 

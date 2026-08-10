@@ -4,13 +4,20 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
 %   Fig01 Circadian characteristics — placeholder (collaborator external)
 %   Fig02 Multiscale RAW + HSub residual Female|Male + CarryForward retention E
 %   Fig03 Co-expression: A absolute power; B descriptive Delta; C LME forest
-%   Fig04 UR_1_3 Z-scored activity L12–L22 (primary cluster)
-%   Fig05 UR_1_3 24h ZT coherence (A) + ridge-power / DeltaR gradients (B|C, BH-FDR)
-%   Fig06 UR_3_6 activity twin of Fig04
-%   Fig07 UR_3_6 coherence twin of Fig05
+%   Fig04 UR_1_3 Z-scored activity L12–L22 (C01 / ClusterRank 1)
+%   Fig05 UR_1_3 24h ZT coherence grid only (main composite = panel A)
+%   Fig06 UR_3_6 activity twin of Fig04 (C01)
+%   Fig07 UR_3_6 coherence twin of Fig05 (C01; A-only main composite)
 %
-%   Sex after Fig02 stays supplemental (Script 9) — not in main composites.
-%   Package_Manuscript/ holds Figs 3–7 + key tables (excludes Fig01 & Fig02).
+%   Supplement (not main storyboard / not renumbered mains):
+%     Standalone/Supp_Transitions/ — band-level Script 5 B (ridge power) & C (DeltaR)
+%       stems: Supp_Fig05_B_RidgePower, Supp_Fig05_C_DeltaR (and Fig07 / UR_3_6)
+%     Standalone/Supp/ — UR_3_6 C02 activity + coherence twins (cfg manuscriptClusters)
+%       stems: Supp_Activity_UR36_C02, Supp_Coherence_UR36_C02
+%
+%   Cluster lock: cfg.script10.manuscriptClusters (ClusterRank; optional period check).
+%   Sex after Fig02 stays Script 9 — not in main composites.
+%   Package_Manuscript/ holds Figs 3–7 + Tables + Figures/Supp/ (excludes Fig01 & Fig02).
 %
 %   Does NOT invent new ridge/LME maths — reglues Scripts 5–9 outputs only.
 
@@ -54,7 +61,8 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
     data = script10_load_data_(paths, cfg);
     manifest = script10_manifest_init_();
     compositeWide = strings(0, 1);
-    packageFigs = strings(0, 1);  % Fig03–Fig07 only
+    packageFigs = strings(0, 1);  % Fig03–Fig07 only (main composites)
+    packageSupp = strings(0, 1); % Standalone/Supp* paths for Package Figures/Supp/
 
     %% Fig01 — Circadian placeholder (collaborator external)
     [manifest, wide1, ~] = script10_build_fig01_placeholder_(outDirs, theme, manifest);
@@ -74,47 +82,74 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
     script10_export_tall_copy_(tall3, wide3, outDirs.compositeTall);
     script10_log_(LOG, 'Fig 03 complete');
 
-    %% Fig04 — UR_1_3 activity L12–L22
+    %% Fig04 — UR_1_3 activity L12–L22 (C01 only)
     band13 = data.primaryUR(1);
+    mainRank13 = script10_manuscript_main_rank_(cfg, band13);
+    cid13 = script10_resolve_manuscript_cluster_(data.clusterSummary, band13, mainRank13, cfg, LOG);
     [manifest, wide4, tall4] = script10_build_activity_figure_(data, outDirs, theme, cfg, manifest, ...
-        'Fig04', band13, 'Fig04_Activity_UR13');
+        'Fig04', band13, 'Fig04_Activity_UR13', cid13, true, '');
     compositeWide(end + 1, 1) = string(wide4); %#ok<AGROW>
     packageFigs(end + 1, 1) = string(wide4); %#ok<AGROW>
     script10_export_tall_copy_(tall4, wide4, outDirs.compositeTall);
-    script10_log_(LOG, 'Fig 04 complete');
+    script10_log_(LOG, 'Fig 04 complete (cluster %s)', char(cid13));
 
-    %% Fig05 — UR_1_3 coherence + gradients (BH-FDR stars)
-    [manifest, wide5, tall5] = script10_build_coherence_figure_(data, outDirs, theme, cfg, manifest, ...
-        'Fig05', band13, 'Fig05_Coherence_UR13');
+    %% Fig05 — UR_1_3 coherence A-only main + band-level B/C supp
+    [manifest, wide5, tall5, supp5] = script10_build_coherence_figure_(data, outDirs, theme, cfg, manifest, ...
+        'Fig05', band13, 'Fig05_Coherence_UR13', cid13, true, true, '');
     compositeWide(end + 1, 1) = string(wide5); %#ok<AGROW>
     packageFigs(end + 1, 1) = string(wide5); %#ok<AGROW>
+    packageSupp = [packageSupp; supp5(:)]; %#ok<AGROW>
     script10_export_tall_copy_(tall5, wide5, outDirs.compositeTall);
-    script10_log_(LOG, 'Fig 05 complete');
+    script10_log_(LOG, 'Fig 05 complete (A-only main; B/C → Supp_Transitions)');
 
-    %% Fig06 — UR_3_6 activity twin
+    %% Fig06 — UR_3_6 activity twin (C01)
     band36 = data.primaryUR(min(2, numel(data.primaryUR)));
+    mainRank36 = script10_manuscript_main_rank_(cfg, band36);
+    cid36 = script10_resolve_manuscript_cluster_(data.clusterSummary, band36, mainRank36, cfg, LOG);
     [manifest, wide6, tall6] = script10_build_activity_figure_(data, outDirs, theme, cfg, manifest, ...
-        'Fig06', band36, 'Fig06_Activity_UR36');
+        'Fig06', band36, 'Fig06_Activity_UR36', cid36, true, '');
     compositeWide(end + 1, 1) = string(wide6); %#ok<AGROW>
     packageFigs(end + 1, 1) = string(wide6); %#ok<AGROW>
     script10_export_tall_copy_(tall6, wide6, outDirs.compositeTall);
-    script10_log_(LOG, 'Fig 06 complete');
+    script10_log_(LOG, 'Fig 06 complete (cluster %s)', char(cid36));
 
-    %% Fig07 — UR_3_6 coherence twin
-    [manifest, wide7, tall7] = script10_build_coherence_figure_(data, outDirs, theme, cfg, manifest, ...
-        'Fig07', band36, 'Fig07_Coherence_UR36');
+    %% Fig07 — UR_3_6 coherence twin (C01; A-only + B/C supp)
+    [manifest, wide7, tall7, supp7] = script10_build_coherence_figure_(data, outDirs, theme, cfg, manifest, ...
+        'Fig07', band36, 'Fig07_Coherence_UR36', cid36, true, true, '');
     compositeWide(end + 1, 1) = string(wide7); %#ok<AGROW>
     packageFigs(end + 1, 1) = string(wide7); %#ok<AGROW>
+    packageSupp = [packageSupp; supp7(:)]; %#ok<AGROW>
     script10_export_tall_copy_(tall7, wide7, outDirs.compositeTall);
-    script10_log_(LOG, 'Fig 07 complete');
+    script10_log_(LOG, 'Fig 07 complete (A-only main; B/C → Supp_Transitions)');
+
+    %% Supp extras — UR_3_6 C02 (rank 2) activity + coherence (not main Figs / storyboard)
+    suppRanks36 = script10_manuscript_supp_ranks_(cfg, band36);
+    for ri = 1:numel(suppRanks36)
+        rnk = double(suppRanks36(ri));
+        cidSupp = script10_resolve_manuscript_cluster_(data.clusterSummary, band36, rnk, cfg, LOG);
+        if strlength(string(cidSupp)) == 0
+            script10_log_(LOG, 'Supp skip: no ClusterRank %g for %s', rnk, char(string(band36)));
+            continue;
+        end
+        short = script10_cluster_short_label_(cidSupp, data.clusterSummary);
+        actStem = sprintf('Supp_Activity_UR36_%s', short);
+        cohStem = sprintf('Supp_Coherence_UR36_%s', short);
+        [manifest, ~, ~] = script10_build_activity_figure_(data, outDirs, theme, cfg, manifest, ...
+            'Supp', band36, actStem, cidSupp, false, 'Supp');
+        packageSupp(end + 1, 1) = string(fullfile(outDirs.standalone, 'Supp', actStem)); %#ok<AGROW>
+        [manifest, ~, ~, ~] = script10_build_coherence_figure_(data, outDirs, theme, cfg, manifest, ...
+            'Supp', band36, cohStem, cidSupp, false, false, 'Supp');
+        packageSupp(end + 1, 1) = string(fullfile(outDirs.standalone, 'Supp', cohStem)); %#ok<AGROW>
+        script10_log_(LOG, 'Supp UR_3_6 %s activity+coherence exported (not main)', short);
+    end
 
     script10_write_manifest_(manifest, outDirs.manifest);
     script10_write_figure_manifest_md_(outDirs.root, manifest);
     script10_write_figure_manifest_csv_(outDirs.root, manifest);
     script10_save_storyboard_(compositeWide, outDirs.storyboard);
 
-    %% Package handoff (Figs 3–7 + tables; exclude Fig01 & Fig02)
-    pkgRoot = script10_build_package_(paths, outDirs, packageFigs, theme, LOG);
+    %% Package handoff (Figs 3–7 main + Supp folder + tables; exclude Fig01 & Fig02)
+    pkgRoot = script10_build_package_(paths, outDirs, packageFigs, packageSupp, theme, LOG);
     script10_log_(LOG, 'Package_Manuscript: %s', pkgRoot);
 
     out = struct();
@@ -509,28 +544,43 @@ function [widePath, tallPath] = script10_composite_fig03_(standPaths, outDirs, t
     close(figT);
 end
 
-%% Fig04 / Fig06 — Z-scored activity L12–L22 (primary cluster)
-function [manifest, widePath, tallPath] = script10_build_activity_figure_(data, outDirs, theme, cfg, manifest, figId, bandName, compositeStem) %#ok<INUSD>
+%% Fig04 / Fig06 — Z-scored activity L12–L22 (explicit ClusterID; primary_cluster_ fallback)
+function [manifest, widePath, tallPath] = script10_build_activity_figure_(data, outDirs, theme, cfg, manifest, figId, bandName, compositeStem, clusterId, writeComposite, standSubdir)
+%SCRIPT10_BUILD_ACTIVITY_FIGURE_ Activity ZT grid for one cluster.
+%   clusterId: ClusterID string; empty → script10_primary_cluster_
+%   writeComposite: true → Wide/Tall composites (main Figs); false → Standalone only
+%   standSubdir: '' → Standalone/<stem>; 'Supp' → Standalone/Supp/<stem>
+    if nargin < 9, clusterId = ""; end
+    if nargin < 10 || isempty(writeComposite), writeComposite = true; end
+    if nargin < 11 || isempty(standSubdir), standSubdir = ''; end
     pal = theme.palette;
-    standDir = fullfile(outDirs.standalone, compositeStem);
+    if strlength(string(standSubdir)) > 0
+        standDir = fullfile(outDirs.standalone, char(standSubdir), compositeStem);
+    else
+        standDir = fullfile(outDirs.standalone, compositeStem);
+    end
     extended_period_gate_ensure_dir(standDir);
     bandName = string(bandName);
-    primaryCluster = script10_primary_cluster_(data.clusterSummary, bandName);
-    primaryFace = script10_cluster_face_label_(primaryCluster, bandName, data.clusterSummary);
+    if strlength(string(clusterId)) == 0
+        clusterId = script10_primary_cluster_(data.clusterSummary, bandName);
+    else
+        clusterId = string(clusterId);
+    end
+    primaryFace = script10_cluster_face_label_(clusterId, bandName, data.clusterSummary);
     facets = pal.coherenceFacets;
     if isfield(cfg, 'script10') && isfield(cfg.script10, 'activityFacets') && ~isempty(cfg.script10.activityFacets)
         facets = cfg.script10.activityFacets;
     elseif isfield(cfg, 'script10') && isfield(cfg.script10, 'coherenceFacets') && ~isempty(cfg.script10.coherenceFacets)
         facets = cfg.script10.coherenceFacets;
     end
-    yMaxAct = script10_activity_zt_ymax_(data.activityZT, primaryCluster, facets);
-    nMice = script10_cluster_nmice_(data.activityZT, primaryCluster, facets, data.nMice);
+    yMaxAct = script10_activity_zt_ymax_(data.activityZT, clusterId, facets);
+    nMice = script10_cluster_nmice_(data.activityZT, clusterId, facets, data.nMice);
 
     fig = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1600 900]);
     for fi = 1:numel(facets)
         ax = subplot(2, 3, fi); hold(ax, 'on');
         set(ax, 'Color', 'w');
-        hasData = script10_plot_zt_activity_facet_(ax, data.activityZT, primaryCluster, facets(fi), pal, theme, yMaxAct);
+        hasData = script10_plot_zt_activity_facet_(ax, data.activityZT, clusterId, facets(fi), pal, theme, yMaxAct);
         % Photoperiod title only — no A–F letters; per-panel n in facet helper, union n figure-level
         title(ax, char(script10_pp_label_(facets(fi))), 'FontWeight', 'bold', 'FontSize', 12, 'Interpreter', 'none');
         if ~hasData
@@ -553,50 +603,75 @@ function [manifest, widePath, tallPath] = script10_build_activity_figure_(data, 
     standPaths = script10_export_figure_(fig, fullfile(standDir, [compositeStem '_Activity']), theme, {theme.ext, '.pdf'});
     close(fig);
 
-    widePath = fullfile(outDirs.compositeWide, [compositeStem theme.ext]);
-    copyfile(standPaths{1}, widePath, 'f');
-    tallPath = fullfile(outDirs.compositeTall, [compositeStem theme.ext]);
-    copyfile(standPaths{1}, tallPath, 'f');
+    widePath = '';
+    tallPath = '';
+    if writeComposite
+        widePath = fullfile(outDirs.compositeWide, [compositeStem theme.ext]);
+        copyfile(standPaths{1}, widePath, 'f');
+        tallPath = fullfile(outDirs.compositeTall, [compositeStem theme.ext]);
+        copyfile(standPaths{1}, tallPath, 'f');
+    end
 
     bandCaption = script10_band_display_(bandName, 'plain');
+    noteExtra = 'Profile display; panel n + union n across photoperiods.';
+    if ~writeComposite
+        noteExtra = [noteExtra ' Supplemental cluster export (not main Fig).'];
+    end
     manifest = script10_manifest_add_(manifest, figId, 'A', standPaths{1}, 'standalone', ...
-        sprintf('Primary-cluster 24h Z-scored activity L12–L22 (%s).', bandCaption), ...
-        'Script 7', 'Tol L12/L22', 'Profile display; panel n + union n across photoperiods.');
-    manifest = script10_manifest_add_(manifest, figId, 'Composite', widePath, '16:9', ...
-        sprintf('UR activity L12–L22 for primary %s.', primaryFace), ...
-        'Script 7', 'Tol', '');
+        sprintf('Cluster 24h Z-scored activity L12–L22 (%s; %s).', bandCaption, primaryFace), ...
+        'Script 7', 'Tol L12/L22', noteExtra);
+    if writeComposite
+        manifest = script10_manifest_add_(manifest, figId, 'Composite', widePath, '16:9', ...
+            sprintf('UR activity L12–L22 for %s.', primaryFace), ...
+            'Script 7', 'Tol', '');
+    end
 end
 
-%% Fig05 / Fig07 — 24h ZT coherence (A) + ridge-power / DeltaR (B|C) with BH-FDR stars
-function [manifest, widePath, tallPath] = script10_build_coherence_figure_(data, outDirs, theme, cfg, manifest, figId, bandName, compositeStem) %#ok<INUSD>
+%% Fig05 / Fig07 — 24h ZT coherence (A main) + optional band-level B/C supp (BH-FDR)
+function [manifest, widePath, tallPath, suppPaths] = script10_build_coherence_figure_(data, outDirs, theme, cfg, manifest, figId, bandName, compositeStem, clusterId, writeComposite, exportTransitions, standSubdir)
+%SCRIPT10_BUILD_COHERENCE_FIGURE_ Panel A = 24h ZT coherence grid (main composite when writeComposite).
+%   B/C (ridge power / DeltaR) are band-level Script 5 standalones under Supp_Transitions when
+%   exportTransitions=true — never glued into Wide/Tall; not duplicated per cluster.
+%   clusterId: ClusterID; empty → primary_cluster_
+    if nargin < 9, clusterId = ""; end
+    if nargin < 10 || isempty(writeComposite), writeComposite = true; end
+    if nargin < 11 || isempty(exportTransitions), exportTransitions = writeComposite; end
+    if nargin < 12 || isempty(standSubdir), standSubdir = ''; end
+    suppPaths = strings(0, 1);
     pal = theme.palette;
-    standDir = fullfile(outDirs.standalone, compositeStem);
+    if strlength(string(standSubdir)) > 0
+        standDir = fullfile(outDirs.standalone, char(standSubdir), compositeStem);
+    else
+        standDir = fullfile(outDirs.standalone, compositeStem);
+    end
     extended_period_gate_ensure_dir(standDir);
-    standPaths = cell(3, 1);
     pp = data.ppOrder;
     ppPlot = pp(pp <= 22);
     bandName = string(bandName);
     grad = data.resyncGradient;
     if isempty(grad), grad = table(); end
 
-    primaryCluster = script10_primary_cluster_(data.clusterSummary, bandName);
-    primaryFace = script10_cluster_face_label_(primaryCluster, bandName, data.clusterSummary);
+    if strlength(string(clusterId)) == 0
+        clusterId = script10_primary_cluster_(data.clusterSummary, bandName);
+    else
+        clusterId = string(clusterId);
+    end
+    primaryFace = script10_cluster_face_label_(clusterId, bandName, data.clusterSummary);
     facets = pal.coherenceFacets;
     if isfield(cfg, 'script10') && isfield(cfg.script10, 'coherenceFacets') && ~isempty(cfg.script10.coherenceFacets)
         facets = cfg.script10.coherenceFacets;
     end
     bandCol = script10_band_colour_(pal, bandName);
-    yMax = script10_phase24_ymax_(data.phase24, primaryCluster, facets, pal);
-    nMice = script10_cluster_nmice_phase_(data.phase24, primaryCluster, facets, data.nMice);
+    yMax = script10_phase24_ymax_(data.phase24, clusterId, facets, pal);
+    nMice = script10_cluster_nmice_phase_(data.phase24, clusterId, facets, data.nMice);
 
-    %% A — 24 h ZT phase coherence (collaborator-style hero)
+    %% A — 24 h ZT phase coherence (main composite = this panel only)
     figA = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1600 900]);
     for fi = 1:numel(facets)
         axA = subplot(2, 3, fi); hold(axA, 'on');
         set(axA, 'Color', 'w');
-        hasFacet = script10_plot_coherence_zt_(axA, data.phase24, primaryCluster, facets(fi), ...
+        hasFacet = script10_plot_coherence_zt_(axA, data.phase24, clusterId, facets(fi), ...
             bandCol, pal, theme, yMax, bandName);
-        % Photoperiod title only — composite panel letter is A (B|C are gradients)
         title(axA, char(script10_pp_label_(facets(fi))), 'FontWeight', 'bold', 'FontSize', 12, 'Interpreter', 'none');
         if ~hasFacet
             text(axA, 0.5, 0.5, 'No data', ...
@@ -612,13 +687,55 @@ function [manifest, widePath, tallPath] = script10_build_coherence_figure_(data,
         set(axA, 'YLim', [0 yMax], 'XLim', [0 24], 'Color', 'w');
         script10_style_axes_(axA, theme);
     end
-    sgtitle(figA, sprintf('A  24 h phase coherence — %s', primaryFace), ...
+    if exportTransitions || writeComposite
+        sgTxt = sprintf('A  24 h phase coherence — %s', primaryFace);
+    else
+        sgTxt = sprintf('24 h phase coherence — %s', primaryFace);
+    end
+    sgtitle(figA, sgTxt, ...
         'FontWeight', 'bold', 'FontName', theme.fontName, 'FontSize', 14, 'Interpreter', 'none');
     script10_add_figure_n_(figA, nMice, theme);
-    standPaths{1} = script10_export_figure_(figA, fullfile(standDir, [compositeStem '_A_CoherenceZT']), theme, {theme.ext, '.pdf'});
+    standA = script10_export_figure_(figA, fullfile(standDir, [compositeStem '_A_CoherenceZT']), theme, {theme.ext, '.pdf'});
     close(figA);
 
-    %% B — ridge power gradient + BH-FDR stars
+    bandCaption = script10_band_display_(bandName, 'plain');
+    noteA = 'Descriptive daily profile; panel n + union n across photoperiods.';
+    if ~writeComposite
+        noteA = [noteA ' Supplemental cluster export (not main Fig).'];
+    end
+    manifest = script10_manifest_add_(manifest, figId, 'A', standA{1}, 'standalone', ...
+        sprintf('24h ZT phase coherence L12–L22 (%s; %s).', bandCaption, primaryFace), ...
+        'Script 7', 'Tol bands', noteA);
+
+    widePath = '';
+    tallPath = '';
+    if writeComposite
+        % A-only Wide/Tall (same pattern as activity figures — do not glue B/C)
+        widePath = fullfile(outDirs.compositeWide, [compositeStem theme.ext]);
+        copyfile(standA{1}, widePath, 'f');
+        tallPath = fullfile(outDirs.compositeTall, [compositeStem theme.ext]);
+        copyfile(standA{1}, tallPath, 'f');
+        manifest = script10_manifest_add_(manifest, figId, 'Composite', widePath, '16:9', ...
+            sprintf('24h ZT coherence (A only) for %s. B/C Script 5 gradients are supplemental.', primaryFace), ...
+            'Script 7', 'Tol', 'Main composite = panel A; B|C under Supp_Transitions.');
+    end
+
+    %% B / C — band-level transition gradients (once per band; Supp_Transitions)
+    if exportTransitions
+        [manifest, suppPaths] = script10_export_transition_supp_(data, outDirs, theme, manifest, figId, bandName, grad, ppPlot, pal);
+    end
+end
+
+function [manifest, suppPaths] = script10_export_transition_supp_(data, outDirs, theme, manifest, figId, bandName, grad, ppPlot, pal)
+%SCRIPT10_EXPORT_TRANSITION_SUPP_ Band-level B ridge-power + C DeltaR under Supp_Transitions.
+    suppPaths = strings(0, 1);
+    bandName = string(bandName);
+    bandCaption = script10_band_display_(bandName, 'plain');
+    figTag = char(string(figId));  % Fig05 / Fig07
+    suppDir = fullfile(outDirs.standalone, 'Supp_Transitions');
+    extended_period_gate_ensure_dir(suppDir);
+
+    stemB = sprintf('Supp_%s_B_RidgePower', figTag);
     figB = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 640 480]);
     axB = axes(figB); hold(axB, 'on');
     script10_plot_transition_metric_(axB, grad, bandName, 'RidgePower_PostMinusPre', ppPlot, pal, theme);
@@ -630,10 +747,14 @@ function [manifest, widePath, tallPath] = script10_build_coherence_figure_(data,
     text(axB, 0.98, 0.02, '* BH-FDR', 'Units', 'normalized', ...
         'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', ...
         'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35]);
-    standPaths{2} = script10_export_figure_(figB, fullfile(standDir, [compositeStem '_B_RidgePower']), theme, {theme.ext, '.pdf'});
+    pathsB = script10_export_figure_(figB, fullfile(suppDir, stemB), theme, {theme.ext, '.pdf'});
     close(figB);
+    suppPaths(end + 1, 1) = string(fullfile(suppDir, stemB)); %#ok<AGROW>
+    manifest = script10_manifest_add_(manifest, figId, 'B', pathsB{1}, 'standalone', ...
+        sprintf('Ridge-power post−pre vs photoperiod (%s); BH-FDR stars.', bandCaption), ...
+        'Script 5', 'Tol DL/LD', 'Confirmatory transition resync — supplemental (not main composite).');
 
-    %% C — DeltaR gradient + BH-FDR stars
+    stemC = sprintf('Supp_%s_C_DeltaR', figTag);
     figC = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 640 480]);
     axC = axes(figC); hold(axC, 'on');
     script10_plot_transition_metric_(axC, grad, bandName, 'DeltaR', ppPlot, pal, theme);
@@ -645,23 +766,12 @@ function [manifest, widePath, tallPath] = script10_build_coherence_figure_(data,
     text(axC, 0.98, 0.02, '* BH-FDR', 'Units', 'normalized', ...
         'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', ...
         'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35]);
-    standPaths{3} = script10_export_figure_(figC, fullfile(standDir, [compositeStem '_C_DeltaR']), theme, {theme.ext, '.pdf'});
+    pathsC = script10_export_figure_(figC, fullfile(suppDir, stemC), theme, {theme.ext, '.pdf'});
     close(figC);
-
-    bandCaption = script10_band_display_(bandName, 'plain');
-    manifest = script10_manifest_add_(manifest, figId, 'A', standPaths{1}{1}, 'standalone', ...
-        sprintf('24h ZT phase coherence L12–L22 (%s).', bandCaption), ...
-        'Script 7', 'Tol bands', 'Descriptive daily profile; panel n + union n across photoperiods.');
-    manifest = script10_manifest_add_(manifest, figId, 'B', standPaths{2}{1}, 'standalone', ...
-        sprintf('Ridge-power post−pre vs photoperiod (%s); BH-FDR stars.', bandCaption), ...
-        'Script 5', 'Tol DL/LD', 'Confirmatory transition resync.');
-    manifest = script10_manifest_add_(manifest, figId, 'C', standPaths{3}{1}, 'standalone', ...
+    suppPaths(end + 1, 1) = string(fullfile(suppDir, stemC)); %#ok<AGROW>
+    manifest = script10_manifest_add_(manifest, figId, 'C', pathsC{1}, 'standalone', ...
         sprintf('\\DeltaR post−pre vs photoperiod (%s); BH-FDR stars.', bandCaption), ...
-        'Script 5', 'Tol DL/LD', 'Confirmatory transition resync — not Fig3 LME.');
-    [widePath, tallPath] = script10_composite_coherence_figure_(standPaths, outDirs, compositeStem, theme);
-    manifest = script10_manifest_add_(manifest, figId, 'Composite', widePath, '16:9', ...
-        sprintf('24h ZT coherence (A) with Script 5 BH-FDR ridge-power / \\DeltaR (B|C) for %s.', bandCaption), ...
-        'Scripts 5/7', 'Tol', 'A descriptive; B|C confirmatory transition resync.');
+        'Script 5', 'Tol DL/LD', 'Confirmatory transition resync — supplemental; cite Script 5 FDR tables in text.');
 end
 
 function script10_star_bh_fdr_(ax, grad, fdrTable, bandName, metricName, ppPlot, pal)
@@ -690,48 +800,25 @@ function script10_star_bh_fdr_(ax, grad, fdrTable, bandName, metricName, ppPlot,
     end
 end
 
-function [widePath, tallPath] = script10_composite_coherence_figure_(standPaths, outDirs, compositeStem, theme)
-    imgs = cell(3, 1);
-    for i = 1:3
-        p = standPaths{i}; if iscell(p), p = p{1}; end
-        imgs{i} = script10_trim_image_whitespace_(imread(p));
-    end
-    figW = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1600 1100]);
-    tl = tiledlayout(figW, 3, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
-    nexttile(tl, 1, [2 2]); imshow(imgs{1}); axis off;
-    nexttile(tl, 5); imshow(imgs{2}); axis off;
-    nexttile(tl, 6); imshow(imgs{3}); axis off;
-    widePath = fullfile(outDirs.compositeWide, [compositeStem theme.ext]);
-    script10_exportgraphics_(figW, widePath, theme.dpi);
-    close(figW);
-
-    figT = figure('Color', 'w', 'Visible', 'off', 'Position', [50 50 1000 1600]);
-    tl2 = tiledlayout(figT, 4, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
-    nexttile(tl2, 1, [3 2]); imshow(imgs{1}); axis off;
-    nexttile(tl2, 7); imshow(imgs{2}); axis off;
-    nexttile(tl2, 8); imshow(imgs{3}); axis off;
-    tallPath = fullfile(outDirs.compositeTall, [compositeStem theme.ext]);
-    script10_exportgraphics_(figT, tallPath, theme.dpi);
-    close(figT);
-end
-
-%% Package_Manuscript (Figs 3–7 + tables; exclude Fig1 & Fig2)
-function pkgRoot = script10_build_package_(paths, outDirs, packageFigs, theme, LOG) %#ok<INUSD>
+%% Package_Manuscript (Figs 3–7 main + Figures/Supp + tables; exclude Fig1 & Fig2)
+function pkgRoot = script10_build_package_(paths, outDirs, packageFigs, packageSupp, theme, LOG) %#ok<INUSD>
+    if nargin < 4 || isempty(packageSupp), packageSupp = strings(0, 1); end
     pkgRoot = fullfile(outDirs.root, 'Package_Manuscript');
     figDir = fullfile(pkgRoot, 'Figures');
     tabDir = fullfile(pkgRoot, 'Tables');
     manDir = fullfile(pkgRoot, 'Manifest');
+    suppDir = fullfile(figDir, 'Supp');
     extended_period_gate_ensure_dir(figDir);
     extended_period_gate_ensure_dir(tabDir);
     extended_period_gate_ensure_dir(manDir);
+    extended_period_gate_ensure_dir(suppDir);
 
-    % Figures 3–7 composites
+    % Figures 3–7 composites (main only)
     for i = 1:numel(packageFigs)
         src = char(packageFigs(i));
         if isfile(src)
             copyfile(src, fullfile(figDir, basename_(src)), 'f');
         end
-        % Optional tall copy if present
         [~, stem, ext] = fileparts(src);
         tallSrc = fullfile(outDirs.compositeTall, [stem ext]);
         if isfile(tallSrc)
@@ -741,7 +828,7 @@ function pkgRoot = script10_build_package_(paths, outDirs, packageFigs, theme, L
         end
     end
 
-    % Optional standalones for Figs 3–7
+    % Main standalones for Figs 3–7 (exclude Supp* folders)
     standSrcRoot = outDirs.standalone;
     standDest = fullfile(figDir, 'Standalone');
     if isfolder(standSrcRoot)
@@ -749,6 +836,7 @@ function pkgRoot = script10_build_package_(paths, outDirs, packageFigs, theme, L
         for i = 1:numel(d)
             if ~d(i).isdir || startsWith(d(i).name, '.'), continue; end
             nm = d(i).name;
+            if startsWith(nm, 'Supp'), continue; end
             if startsWith(nm, 'Fig01') || startsWith(nm, 'Fig02'), continue; end
             if ~(startsWith(nm, 'Fig03') || startsWith(nm, 'Fig04') || startsWith(nm, 'Fig05') || ...
                     startsWith(nm, 'Fig06') || startsWith(nm, 'Fig07'))
@@ -757,6 +845,47 @@ function pkgRoot = script10_build_package_(paths, outDirs, packageFigs, theme, L
             dest = fullfile(standDest, nm);
             extended_period_gate_ensure_dir(fileparts(dest));
             copyfile(fullfile(d(i).folder, nm), dest, 'f');
+        end
+    end
+
+    % Supplemental figures → Figures/Supp/ (B/C transitions + C02 grids)
+    for i = 1:numel(packageSupp)
+        src = char(packageSupp(i));
+        if isfolder(src)
+            [~, leaf] = fileparts(src);
+            dest = fullfile(suppDir, leaf);
+            extended_period_gate_ensure_dir(fileparts(dest));
+            if isfolder(dest)
+                try, rmdir(dest, 's'); catch, end %#ok<CTCH>
+            end
+            copyfile(src, dest, 'f');
+        elseif isfile(src)
+            copyfile(src, fullfile(suppDir, basename_(src)), 'f');
+        else
+            % Stem folder may hold PNG+PDF siblings — copy matching files from parent
+            parent = fileparts(src);
+            stem = basename_(src);
+            if isfolder(parent)
+                matches = dir(fullfile(parent, [stem '.*']));
+                for mi = 1:numel(matches)
+                    if matches(mi).isdir, continue; end
+                    copyfile(fullfile(matches(mi).folder, matches(mi).name), ...
+                        fullfile(suppDir, matches(mi).name), 'f');
+                end
+                % Also copy whole Supp_Transitions / Supp subtrees once
+            end
+        end
+    end
+    % Ensure full Supp_Transitions and Supp trees are in package
+    for subName = {'Supp_Transitions', 'Supp'}
+        srcTree = fullfile(outDirs.standalone, subName{1});
+        if isfolder(srcTree)
+            destTree = fullfile(suppDir, subName{1});
+            extended_period_gate_ensure_dir(fileparts(destTree));
+            if isfolder(destTree)
+                try, rmdir(destTree, 's'); catch, end %#ok<CTCH>
+            end
+            copyfile(srcTree, destTree, 'f');
         end
     end
 
@@ -815,9 +944,13 @@ function script10_write_package_readme_(pkgRoot, theme) %#ok<INUSD>
     fprintf(fid, '# Package_Manuscript - Script 10 handoff\n\n');
     fprintf(fid, 'Zip this folder for collaborator / manuscript handoff.\n\n');
     fprintf(fid, '## Included\n\n');
-    fprintf(fid, '- **Figures/** - Fig03-Fig07 composites (Wide + optional Tall/Standalone)\n');
+    fprintf(fid, '- **Figures/** - Fig03-Fig07 main composites (Wide + optional Tall/Standalone)\n');
+    fprintf(fid, '- **Figures/Supp/** - supplemental panels (not renumbered mains):\n');
+    fprintf(fid, '  - `Supp_Transitions/` - Fig05/07 **B** ridge-power + **C** DeltaR (Script 5 BH-FDR)\n');
+    fprintf(fid, '  - `Supp/` - UR_3_6 **C02** activity + coherence twins\n');
     fprintf(fid, '- **Tables/** - co-expression descriptives, LME coefficients (BH-FDR),\n');
     fprintf(fid, '  transition resync FDR + BinnedCoherence, gradient Summary, profile ClusterSummary / activity\n');
+    fprintf(fid, '  (Script 5 FDR tables remain for main-text citation even though B/C are off main Figs 5/7)\n');
     fprintf(fid, '- **Manifest/** - figure order, captions, source scripts\n\n');
     fprintf(fid, '## Excluded (still in full Script10 tree)\n\n');
     fprintf(fid, '- **Fig01** - circadian characteristics placeholder (collaborator external)\n');
@@ -827,14 +960,15 @@ function script10_write_package_readme_(pkgRoot, theme) %#ok<INUSD>
     fprintf(fid, '|--------|------------------|--------------|\n');
     fprintf(fid, '| **Fig03** A-B | Descriptive means | Exploratory co-expression gradients |\n');
     fprintf(fid, '| **Fig03C** | Script 6 LME Photoperiod_h beta+/-CI (BH-FDR) | **Confirmatory co-expression** |\n');
-    fprintf(fid, '| **Figs 04 & 06** | Script 7 profiles | Primary-cluster 24h activity display |\n');
-    fprintf(fid, '| **Figs 05 & 07 A** | Script 7 24h ZT coherence | Descriptive daily phase organisation |\n');
-    fprintf(fid, '| **Figs 05 & 07 B|C** | Script 5 BH-FDR (ridge power / DeltaR) | **Confirmatory transition resync** |\n\n');
-    fprintf(fid, 'Do not conflate Fig 3 LME with Figs 5/7 Script 5 transition stats.\n');
+    fprintf(fid, '| **Figs 04 & 06** | Script 7 profiles (C01) | Primary-cluster 24h activity display |\n');
+    fprintf(fid, '| **Figs 05 & 07** | Script 7 24h ZT coherence (**A only** on main) | Descriptive daily phase organisation |\n');
+    fprintf(fid, '| **Supp B|C (Fig05/07)** | Script 5 BH-FDR (ridge power / DeltaR) | **Confirmatory transition resync** (cite in text; panels supplemental) |\n');
+    fprintf(fid, '| **Supp UR36 C02** | Script 7 profiles (ClusterRank 2) | Extra cluster face; not main Fig 8/9 |\n\n');
+    fprintf(fid, 'Do not conflate Fig 3 LME with Script 5 transition stats.\n');
+    fprintf(fid, 'Main Figs 5/7 composites are coherence grids only; B/C live under Figures/Supp/Supp_Transitions/.\n');
     fprintf(fid, 'Sex-stratified panels remain Script 9 (supplemental).\n');
     fclose(fid);
 
-    % Duplicate short note under Manifest/
     fid2 = fopen(fullfile(pkgRoot, 'Manifest', 'PACKAGE_README.md'), 'w');
     if fid2 > 0
         fprintf(fid2, 'See `../README.md` for included vs excluded content and claim boundaries.\n');
@@ -851,16 +985,100 @@ end
 
 %% Shared plotting helpers (adapted from Script 8; local — not exported)
 function cid = script10_primary_cluster_(CS, bandName)
+%SCRIPT10_PRIMARY_CLUSTER_ ClusterRank 1 for band (legacy C01 path).
+    cid = script10_cluster_by_rank_(CS, bandName, 1);
+end
+
+function cid = script10_cluster_by_rank_(CS, bandName, rank)
+%SCRIPT10_CLUSTER_BY_RANK_ Resolve ClusterID from ClusterSummary by ClusterRank.
     cid = "";
     if isempty(CS) || ~ismember('BandName', CS.Properties.VariableNames), return; end
     sub = CS(string(CS.BandName) == string(bandName), :);
     if isempty(sub), return; end
+    rank = double(rank);
     if ismember('ClusterRank', sub.Properties.VariableNames)
+        hit = sub(double(sub.ClusterRank) == rank, :);
+        if ~isempty(hit)
+            cid = string(hit.ClusterID(1));
+            return;
+        end
+        % Fallback: sort by rank and take ordinal if exact rank missing
         sub = sortrows(sub, 'ClusterRank', 'ascend');
-    elseif ismember('CandidateCount', sub.Properties.VariableNames)
-        sub = sortrows(sub, 'CandidateCount', 'descend');
+        if rank >= 1 && rank <= height(sub)
+            cid = string(sub.ClusterID(rank));
+        end
+        return;
     end
-    cid = string(sub.ClusterID(1));
+    if ismember('CandidateCount', sub.Properties.VariableNames)
+        sub = sortrows(sub, 'CandidateCount', 'descend');
+        if rank >= 1 && rank <= height(sub)
+            cid = string(sub.ClusterID(rank));
+        end
+    end
+end
+
+function cid = script10_resolve_manuscript_cluster_(CS, bandName, rank, cfg, LOG)
+%SCRIPT10_RESOLVE_MANUSCRIPT_CLUSTER_ ClusterRank lock + optional period-window warn.
+    if nargin < 5, LOG = -1; end
+    cid = script10_cluster_by_rank_(CS, bandName, rank);
+    if strlength(string(cid)) == 0
+        script10_log_(LOG, 'No cluster for %s rank %g', char(string(bandName)), double(rank));
+        return;
+    end
+    if nargin < 4 || isempty(cfg) || ~isfield(cfg, 'script10') || ...
+            ~isfield(cfg.script10, 'manuscriptClusters')
+        return;
+    end
+    mc = cfg.script10.manuscriptClusters;
+    bandKey = matlab.lang.makeValidName(char(string(bandName)));
+    if ~isfield(mc, bandKey), return; end
+    spec = mc.(bandKey);
+    if ~isfield(spec, 'expectPeriodRanks') || ~isfield(spec, 'expectPeriod_h') || isempty(spec.expectPeriod_h)
+        return;
+    end
+    er = double(spec.expectPeriodRanks(:));
+    ep = double(spec.expectPeriod_h);
+    idx = find(er == double(rank), 1);
+    if isempty(idx) || idx > size(ep, 1), return; end
+    loExp = ep(idx, 1); hiExp = ep(idx, 2);
+    if ~all(ismember({'ClusterID', 'PeriodLow_h', 'PeriodHigh_h'}, CS.Properties.VariableNames)), return; end
+    row = CS(string(CS.ClusterID) == string(cid), :);
+    if isempty(row), return; end
+    lo = double(row.PeriodLow_h(1)); hi = double(row.PeriodHigh_h(1));
+    if ~(isfinite(lo) && isfinite(hi)), return; end
+    tol = 0.15;  % hours — soft check against Script 7 window drift
+    if abs(lo - loExp) > tol || abs(hi - hiExp) > tol
+        msg = sprintf(['Cluster period window drift for %s rank %g (%s): got %.2f–%.2f h, ' ...
+            'expected ~%.2f–%.2f h (cfg.script10.manuscriptClusters).'], ...
+            char(string(bandName)), double(rank), char(string(cid)), lo, hi, loExp, hiExp);
+        warning('extended_script10:ClusterPeriodCheck', '%s', msg);
+        script10_log_(LOG, '%s', msg);
+    end
+end
+
+function ranks = script10_manuscript_supp_ranks_(cfg, bandName)
+    ranks = [];
+    if ~isfield(cfg, 'script10') || ~isfield(cfg.script10, 'manuscriptClusters'), return; end
+    mc = cfg.script10.manuscriptClusters;
+    bandKey = matlab.lang.makeValidName(char(string(bandName)));
+    if ~isfield(mc, bandKey), return; end
+    spec = mc.(bandKey);
+    if isfield(spec, 'suppRanks') && ~isempty(spec.suppRanks)
+        ranks = double(spec.suppRanks(:))';
+    end
+end
+
+function rank = script10_manuscript_main_rank_(cfg, bandName)
+%SCRIPT10_MANUSCRIPT_MAIN_RANK_ First mainRanks entry (default 1 = C01).
+    rank = 1;
+    if ~isfield(cfg, 'script10') || ~isfield(cfg.script10, 'manuscriptClusters'), return; end
+    mc = cfg.script10.manuscriptClusters;
+    bandKey = matlab.lang.makeValidName(char(string(bandName)));
+    if ~isfield(mc, bandKey), return; end
+    spec = mc.(bandKey);
+    if isfield(spec, 'mainRanks') && ~isempty(spec.mainRanks)
+        rank = double(spec.mainRanks(1));
+    end
 end
 
 function lbl = script10_cluster_short_label_(clusterID, CS)
@@ -1118,10 +1336,22 @@ function script10_write_figure_manifest_md_(outRoot, manifest)
     fprintf(fid, '| 1 | Circadian characteristics - **placeholder** (collaborator) | External | Slot only |\n');
     fprintf(fid, '| 2 | Multiscale RAW + HSub residual Female\\|Male + CarryForward E | Scripts 3/4 | Display / QC |\n');
     fprintf(fid, '| 3 | A abs power; B descriptive Delta; **C LME forest** | Script 6 | A-B exploratory; **C confirmatory co-expression** |\n');
-    fprintf(fid, '| 4 | UR_1_3 Z-scored activity L12-L22 | Script 7 | Profile display |\n');
-    fprintf(fid, '| 5 | UR_1_3 **24h ZT coherence (A)** + ridge/DeltaR **BH-FDR (B\\|C)** | Scripts 5/7 | A display; **B\\|C confirmatory transition resync** |\n');
-    fprintf(fid, '| 6 | UR_3_6 activity twin of Fig 4 | Script 7 | Profile display |\n');
-    fprintf(fid, '| 7 | UR_3_6 coherence twin of Fig 5 | Scripts 5/7 | A display; **B\\|C confirmatory** |\n\n');
+    fprintf(fid, '| 4 | UR_1_3 Z-scored activity L12-L22 (**C01**) | Script 7 | Profile display |\n');
+    fprintf(fid, '| 5 | UR_1_3 **24h ZT coherence (A only on main)** | Script 7 | Descriptive daily phase |\n');
+    fprintf(fid, '| 6 | UR_3_6 activity twin of Fig 4 (**C01**) | Script 7 | Profile display |\n');
+    fprintf(fid, '| 7 | UR_3_6 coherence twin of Fig 5 (**A only on main**) | Script 7 | Descriptive daily phase |\n\n');
+    fprintf(fid, '### Supplemental (not main storyboard / not renumbered mains)\n\n');
+    fprintf(fid, '| Asset | Content | Source |\n');
+    fprintf(fid, '|-------|---------|--------|\n');
+    fprintf(fid, '| `Standalone/Supp_Transitions/Supp_Fig05_B_RidgePower` | UR_1_3 ridge-power gradient + BH-FDR | Script 5 |\n');
+    fprintf(fid, '| `Standalone/Supp_Transitions/Supp_Fig05_C_DeltaR` | UR_1_3 DeltaR gradient + BH-FDR | Script 5 |\n');
+    fprintf(fid, '| `Standalone/Supp_Transitions/Supp_Fig07_B_RidgePower` | UR_3_6 ridge-power gradient + BH-FDR | Script 5 |\n');
+    fprintf(fid, '| `Standalone/Supp_Transitions/Supp_Fig07_C_DeltaR` | UR_3_6 DeltaR gradient + BH-FDR | Script 5 |\n');
+    fprintf(fid, '| `Standalone/Supp/Supp_Activity_UR36_C02` | UR_3_6 ClusterRank 2 activity twin | Script 7 |\n');
+    fprintf(fid, '| `Standalone/Supp/Supp_Coherence_UR36_C02` | UR_3_6 ClusterRank 2 coherence twin | Script 7 |\n\n');
+    fprintf(fid, 'Cluster lock: `cfg.script10.manuscriptClusters` (ClusterRank; optional period-window warn).\n');
+    fprintf(fid, 'Main Figs 4-7 = C01 only; B/C and C02 are Package `Figures/Supp/`.\n');
+    fprintf(fid, 'Cite Script 5 FDR tables in text for transition claims (panels supplemental).\n');
     fprintf(fid, 'Sex after Fig 2 -> Script 9 supplemental.\n\n');
     fprintf(fid, '## Manifest rows\n\n');
     for i = 1:height(manifest)

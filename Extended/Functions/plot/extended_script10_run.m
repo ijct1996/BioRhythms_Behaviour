@@ -2,6 +2,7 @@ function out = extended_script10_run(cohortRoot, cfg)
 %EXTENDED_SCRIPT10_RUN Manuscript figure assembler (Scripts 5–9 inputs).
 %
 %   Non-interactive entry: pass cfg.plotMode ('publication'|'development').
+%   Figs 5/7 main = coherence A only; B/C + UR36 C02 under Standalone/Supp*.
 %   Prefer run_extended_script10_manuscript_figures for interactive mode dialog.
 
     if nargin < 2 || isempty(cfg)

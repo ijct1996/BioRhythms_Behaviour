@@ -3,7 +3,11 @@
 ## [Unreleased] — Script 10 manuscript amendments
 
 ### Changed
-- Figs 5/7 panel A: 24 h ZT phase coherence (Script 7 profiles) instead of peri-transition DL/LD curves; B|C keep Script 5 BH-FDR ridge-power / ΔR
+- Figs 5/7 **main composites = panel A only** (24h ZT coherence grid); B (ridge power) and C (ΔR) moved to `Standalone/Supp_Transitions/` (`Supp_Fig05/07_B_*`, `_C_*`) — not glued into Wide/Tall
+- UR_3_6 **C02** (ClusterRank 2, ~4.25–5.0 h) activity + coherence twins as Supp extras (`Supp_Activity_UR36_C02`, `Supp_Coherence_UR36_C02`); mains stay C01
+- `cfg.script10.manuscriptClusters` lock: resolve by ClusterRank (+ optional period-window warn); builders accept explicit ClusterID
+- Package_Manuscript: main Figs 3–7 unchanged set; Supp under `Figures/Supp/`; Script 5 FDR tables still packaged for text citation
+- Figs 5/7 panel A: 24 h ZT phase coherence (Script 7 profiles) instead of peri-transition DL/LD curves
 - Activity + coherence grids: figure-level `n = … mice (across photoperiods)` plus per-facet `n = …` (cluster membership can be sparse at early L; union ≠ per panel)
 - Dark-phase shade + lights-off line aligned with Script 9 / collaborator style
 
