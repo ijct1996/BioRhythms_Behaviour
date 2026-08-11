@@ -82,6 +82,8 @@ Read-only post-hoc after Script 7. Uses Script 7 cluster lock (UR_1_3 C01, UR_3_
 | `Tables/DominantPeriod_Output.xlsx` | Same tables + Settings workbook |
 | `Figures/Supp_DominantPeriod_RidgePeriod_3Cluster.*` | Supplemental nonstationarity figure (Paul Tol band colours) |
 
+Script 11 is **standalone** — Script 10 does not copy these into `Package_Manuscript/`.
+
 ## Script 10 locked main figures
 
 | Fig | Content |
@@ -98,7 +100,7 @@ Read-only post-hoc after Script 7. Uses Script 7 cluster lock (UR_1_3 C01, UR_3_
 - `Supp_Transitions/` — Fig05/07 **LD Pre/Post R** bars (Script 5 BH-FDR ΔR>0 stars; cite `Resync_PrimaryStats_BH_FDR` in text)
 - `Supp/` — UR_3_6 **C02** activity + coherence twins (`cfg.script10.manuscriptClusters`)
 
-`Package_Manuscript/` includes Figs **3–7** + Supp + key tables; **excludes** Fig 1 and Fig 2. Sex after Fig 2 stays Script 9 supplemental.
+`Package_Manuscript/` includes Figs **3–7** + Supp + **full supplemental tables** (`Tables/Workbooks`, `Tables/CSV`, index); **excludes** Fig 1 and Fig 2. Same table bundle mirrored under `Script10_*/Tables/Supplemental/`. **Script 11** (dominant UR periods + violins) is a **separate** output folder — not bundled into Script 10.
 
 **Do not conflate:** Fig 3C = co-expression LME; Script 5 transition FDR = confirmatory resync (LD Pre/Post R supplemental, not glued onto Figs 5/7). Ridge-power / ΔR gradient figures are not exported.
 

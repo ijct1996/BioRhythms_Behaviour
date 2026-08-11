@@ -82,6 +82,8 @@ function cfg = extended_defaults()
     cfg.script10.exportStoryboard = true;
     cfg.script10.exportVector = true;
     cfg.script10.buildPackage = true;  % Package_Manuscript/ Figs 3–7 + tables (excludes Fig1–2)
+    cfg.script10.exportSupplementalTables = true;  % Workbooks + CSV supp index in Package + Script10/Tables/Supplemental
+    cfg.script10.exportSupplementalCsv = true;
     % Manuscript cluster lock (Figs 4–7 + Supp extras).
     % Resolve by ClusterRank from ClusterSummary (stable); optional period-window check.
     %   UR_1_3 → rank 1 main only

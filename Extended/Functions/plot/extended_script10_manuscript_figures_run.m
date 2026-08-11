@@ -18,7 +18,7 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
 %
 %   Cluster lock: cfg.script10.manuscriptClusters (ClusterRank; optional period check).
 %   Sex after Fig02 stays Script 9 — not in main composites.
-%   Package_Manuscript/ holds Figs 3–7 + Tables + Figures/Supp/ (excludes Fig01 & Fig02).
+%   Package_Manuscript/ holds Figs 3–7 + Tables (full supplemental export) + Figures/Supp/ (excludes Fig01 & Fig02).
 %
 %   Does NOT invent new ridge/LME maths — reglues Scripts 5–9 outputs only.
 
@@ -150,7 +150,7 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
     script10_save_storyboard_(compositeWide, outDirs.storyboard);
 
     %% Package handoff (Figs 3–7 main + Supp folder + tables; exclude Fig01 & Fig02)
-    pkgRoot = script10_build_package_(paths, outDirs, packageFigs, packageSupp, theme, LOG);
+    pkgRoot = script10_build_package_(paths, outDirs, packageFigs, packageSupp, theme, cfg, LOG);
     script10_log_(LOG, 'Package_Manuscript: %s', pkgRoot);
 
     out = struct();
@@ -921,8 +921,9 @@ function [meanPre, meanPost, semPre, semPost, nCand] = script10_ld_prepost_r_mea
 end
 
 %% Package_Manuscript (Figs 3–7 main + Figures/Supp + tables; exclude Fig1 & Fig2)
-function pkgRoot = script10_build_package_(paths, outDirs, packageFigs, packageSupp, theme, LOG) %#ok<INUSD>
+function pkgRoot = script10_build_package_(paths, outDirs, packageFigs, packageSupp, theme, cfg, LOG) %#ok<INUSD>
     if nargin < 4 || isempty(packageSupp), packageSupp = strings(0, 1); end
+    if nargin < 6 || isempty(cfg), cfg = extended_defaults(); end
     pkgRoot = fullfile(outDirs.root, 'Package_Manuscript');
     figDir = fullfile(pkgRoot, 'Figures');
     tabDir = fullfile(pkgRoot, 'Tables');
@@ -1009,38 +1010,14 @@ function pkgRoot = script10_build_package_(paths, outDirs, packageFigs, packageS
         end
     end
 
-    % Key workbooks / sheets
-    script10_copy_if_exists_(paths.lmeDescriptiveXlsx, fullfile(tabDir, 'AcrossPhotoperiod_Outputs.xlsx'));
-    script10_copy_if_exists_(paths.lmeInferenceXlsx, fullfile(tabDir, 'AcrossPhotoperiod_LME_Outputs.xlsx'));
-    script10_copy_if_exists_(paths.resyncXlsx, fullfile(tabDir, 'Ultradian_RidgePhase_Resync_Output.xlsx'));
-    script10_copy_if_exists_(paths.resyncGradientXlsx, fullfile(tabDir, 'TransitionEffect_vs_Photoperiod.xlsx'));
-    script10_copy_if_exists_(paths.profilesXlsx, fullfile(tabDir, basename_(paths.profilesXlsx)));
+    % Supplemental tables (Scripts 4–7 + optional 9/11) → Package + Script10/Tables/Supplemental
+    destDirs = struct();
+    destDirs.packageTables = tabDir;
+    destDirs.script10Tables = fullfile(outDirs.root, 'Tables', 'Supplemental');
+    extended_script10_export_supplemental_tables(paths, destDirs, cfg, LOG);
 
-    % Extracted key sheets (lightweight CSVs for handoff)
-    try
-        T = script10_read_sheet_(paths.lmeDescriptiveXlsx, 'CR_UR_Pairs_Summary');
-        if ~isempty(T), writetable(T, fullfile(tabDir, 'CR_UR_Pairs_Summary.csv')); end
-        T = script10_read_sheet_(paths.lmeDescriptiveXlsx, 'AbsolutePower_Summary');
-        if ~isempty(T), writetable(T, fullfile(tabDir, 'AbsolutePower_Summary.csv')); end
-        T = script10_read_sheet_(paths.lmeInferenceXlsx, 'LME_Coef_Delta_BH_FDR');
-        if ~isempty(T), writetable(T, fullfile(tabDir, 'LME_Coef_Delta_BH_FDR.csv')); end
-        T = script10_read_sheet_(paths.lmeInferenceXlsx, 'LME_Coef_Power_BH_FDR');
-        if ~isempty(T), writetable(T, fullfile(tabDir, 'LME_Coef_Power_BH_FDR.csv')); end
-        T = script10_read_sheet_(paths.resyncXlsx, 'BinnedCoherence');
-        if ~isempty(T), writetable(T, fullfile(tabDir, 'BinnedCoherence.csv')); end
-        T = script10_read_sheet_(paths.resyncXlsx, 'RidgePowerStats_BH_FDR');
-        if ~isempty(T), writetable(T, fullfile(tabDir, 'RidgePowerStats_BH_FDR.csv')); end
-        T = script10_read_sheet_(paths.resyncXlsx, 'Resync_PrimaryStats_BH_FDR');
-        if ~isempty(T), writetable(T, fullfile(tabDir, 'Resync_PrimaryStats_BH_FDR.csv')); end
-        T = script10_read_sheet_(paths.resyncGradientXlsx, 'Summary');
-        if ~isempty(T), writetable(T, fullfile(tabDir, 'TransitionEffect_vs_Photoperiod_Summary.csv')); end
-        T = script10_read_sheet_(paths.profilesXlsx, 'ClusterSummary');
-        if ~isempty(T), writetable(T, fullfile(tabDir, 'ClusterSummary.csv')); end
-        T = script10_read_sheet_(paths.profilesXlsx, 'ActivityComponent_24h');
-        if ~isempty(T), writetable(T, fullfile(tabDir, 'ActivityComponent_24h.csv')); end
-    catch ME
-        warning('Script10:PackageTables', 'Partial package table extract: %s', ME.message);
-    end
+    % Legacy flat CSV aliases at Tables/ root (backward-compatible handoff paths)
+    script10_copy_priority_csv_aliases_(tabDir);
 
     % Manifest copies
     if isfile(outDirs.manifest)
@@ -1068,10 +1045,11 @@ function script10_write_package_readme_(pkgRoot, theme) %#ok<INUSD>
     fprintf(fid, '- **Figures/Supp/** - supplemental panels (not renumbered mains):\n');
     fprintf(fid, '  - `Supp_Transitions/` - Fig05/07 **LD Pre/Post R** bars (Script 5 BH-FDR stars)\n');
     fprintf(fid, '  - `Supp/` - UR_3_6 **C02** activity + coherence twins\n');
-    fprintf(fid, '- **Tables/** - co-expression descriptives, LME coefficients (BH-FDR),\n');
-    fprintf(fid, '  transition resync FDR (`Resync_PrimaryStats_BH_FDR`) + BinnedCoherence, gradient Summary,\n');
-    fprintf(fid, '  profile ClusterSummary / activity (Script 5 FDR tables for main-text citation;\n');
-    fprintf(fid, '  ridge-power / DeltaR gradient figures are not exported)\n');
+    fprintf(fid, '- **Tables/** - full supplemental export (`Workbooks/`, `CSV/`, `README_SUPPLEMENTAL_TABLES.md`)\n');
+    fprintf(fid, '  - Methods/QC (Script 4 CarryForward), co-expression + LME (Script 6),\n');
+    fprintf(fid, '    transition resync + LL projected (Script 5), profiles (Script 7),\n');
+    fprintf(fid, '    Script 9 manifest when present (Script 11 tables stay in Script11_DominantPeriod_*)\n');
+    fprintf(fid, '  - Flat CSV aliases at `Tables/*.csv` retained for legacy paths\n');
     fprintf(fid, '- **Manifest/** - figure order, captions, source scripts\n\n');
     fprintf(fid, '## Excluded (still in full Script10 tree)\n\n');
     fprintf(fid, '- **Fig01** - circadian characteristics placeholder (collaborator external)\n');
@@ -1101,6 +1079,31 @@ function script10_copy_if_exists_(src, dest)
     if isfile(src)
         extended_period_gate_ensure_dir(fileparts(dest));
         copyfile(src, dest, 'f');
+    end
+end
+
+function script10_copy_priority_csv_aliases_(tabDir)
+%SCRIPT10_COPY_PRIORITY_CSV_ALIASES Flat aliases at Tables/ root for legacy handoff paths.
+    csvSub = fullfile(tabDir, 'CSV');
+    if ~isfolder(csvSub), return; end
+    aliases = { ...
+        'CR_UR_Pairs_Summary.csv'; ...
+        'AbsolutePower_Summary.csv'; ...
+        'LME_Coef_Delta_BH_FDR.csv'; ...
+        'LME_Coef_Power_BH_FDR.csv'; ...
+        'BinnedCoherence.csv'; ...
+        'RidgePowerStats_BH_FDR.csv'; ...
+        'Resync_PrimaryStats_BH_FDR.csv'; ...
+        'TransitionEffect_vs_Photoperiod_Summary.csv'; ...
+        'ClusterSummary.csv'; ...
+        'ActivityComponent_24h.csv'; ...
+        'PhaseCoherence_24h.csv'; ...
+        'ClusterMembership.csv'};
+    for i = 1:numel(aliases)
+        src = fullfile(csvSub, aliases{i});
+        if isfile(src)
+            copyfile(src, fullfile(tabDir, aliases{i}), 'f');
+        end
     end
 end
 

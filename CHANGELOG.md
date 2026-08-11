@@ -6,11 +6,13 @@
 - **Extended Script 11** — read-only dominant validated UR period tables + supplemental 3-panel ridge-period violins (UR_1_3 C01 | UR_3_6 C01 | UR_3_6 C02)
 - Entry: `run_extended_script11_dominant_periods(cohortRoot)`; outputs `Script11_DominantPeriod_{Publication|Development}/`
 - `DominantPeriod_ClusterSummary.csv` / `DominantPeriod_Output.xlsx` — cohort median τ, IQR across mice, within-mouse IQR, harmonic distance vs P₀ reference
-- Paul Tol Bright band colours (`UR_1_3` cyan, `UR_3_6` purple); median (solid) + mean (dashed) overlays
+- Paul Tol Bright band colours (`UR_1_3` cyan, `UR_3_6` purple); median (dotted) + mean (solid) overlays
+- Script 11 outputs are **not** bundled into Script 10 `Package_Manuscript/` (separate supp deliverable)
 
 ## [Unreleased] — Script 10 manuscript amendments
 
 ### Changed
+- **Script 10** exports comprehensive **supplemental tables** to `Package_Manuscript/Tables/` (`Workbooks/`, `CSV/`, index) and mirrors to `Script10_*/Tables/Supplemental/`; flat CSV aliases kept at `Tables/` root
 - Figs 5/7 **main composites = panel A only** (24h ZT coherence grid); transition supp = **LD Pre/Post R** bars (`Supp_Fig05/07_LD_PrePost_R`) under `Standalone/Supp_Transitions/` — not glued into Wide/Tall
 - Dropped Script 10 export of `Supp_Fig05/07_B_RidgePower` and `_C_DeltaR` gradient figures (Script 5 FDR tables remain in Package for citation)
 - UR_3_6 **C02** (ClusterRank 2, ~4.25–5.0 h) activity + coherence twins as Supp extras (`Supp_Activity_UR36_C02`, `Supp_Coherence_UR36_C02`); mains stay C01
