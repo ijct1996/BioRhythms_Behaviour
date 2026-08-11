@@ -1,5 +1,5 @@
 function cfg = extended_defaults()
-%EXTENDED_DEFAULTS Extended Scripts 4–11 defaults (development-first).
+%EXTENDED_DEFAULTS Extended Scripts 4–12 defaults (development-first).
 %
 %   cfg = extended_defaults()
 %
@@ -8,7 +8,7 @@ function cfg = extended_defaults()
 
     cfg.version = '1.0-dev';
     cfg.matlabTarget = 'R2025b';
-    cfg.phase = 'Scripts4-11';
+    cfg.phase = 'Scripts4-12';
 
     %% Plot mode — development until user requests publication pass
     cfg.plotMode = 'development';
@@ -20,7 +20,7 @@ function cfg = extended_defaults()
     cfg.samplingHours = 10 / 60;
     cfg.samplingMinutes = 10;
 
-    %% Script numbering (Extended 4–11)
+    %% Script numbering (Extended 4–12)
     cfg.scripts = struct();
     cfg.scripts(4).name = 'Ridge handoff + CarryForward validation';
     cfg.scripts(4).entry = 'run_extended_script4_ridge_validation';
@@ -38,6 +38,8 @@ function cfg = extended_defaults()
     cfg.scripts(10).entry = 'run_extended_script10_manuscript_figures';
     cfg.scripts(11).name = 'Dominant UR period summary + supplemental violins (Script 7 clusters)';
     cfg.scripts(11).entry = 'run_extended_script11_dominant_periods';
+    cfg.scripts(12).name = 'Sex-stratified activity + post-LD amplitude (F vs M BH-FDR)';
+    cfg.scripts(12).entry = 'run_extended_script12_sex_stratified_profiles';
     %% HSub / CarryForward (Script 4 gate)
     cfg.hsub.defaultResidual = 'SEL_P360';
     cfg.hsub.primaryMode = "SEL_P360";
@@ -105,6 +107,22 @@ function cfg = extended_defaults()
         struct('BandName', "UR_3_6", 'ClusterRank', 2, 'MainText', false)];
     cfg.script11.defaultP0_h = 24.0;
     cfg.script11.harmonicKMax = 12;
+
+    %% Script 12 — sex-stratified activity + amplitude (read-only; after Script 7)
+    cfg.script12 = struct();
+    cfg.script12.panels = [ ...
+        struct('BandName', "UR_1_3", 'ClusterRank', 1); ...
+        struct('BandName', "UR_3_6", 'ClusterRank', 1); ...
+        struct('BandName', "UR_3_6", 'ClusterRank', 2)];
+    cfg.script12.facets = [12, 14, 16, 18, 20, 22];  % L12–L22 full grid
+    cfg.script12.ampBaselinePreH = 1.0;           % hours before lights-off for baseline mean
+    cfg.script12.searchWindowPeriodFrac = 1.0;    % search W = frac × cluster period centre
+    cfg.script12.searchWindowCapH = 3.0;          % cap on search window (h)
+    cfg.script12.searchWindowFloorH = 1.0;        % minimum search window (h)
+    cfg.script12.peakProminenceMin = 0.05;        % min (peak − baseline) to accept local max (z)
+    cfg.script12.alphaFdr = 0.05;                 % BH-FDR within ClusterID (F vs M)
+    cfg.script12.minNPerSex = 3;                  % minimum n per sex for Mann-Whitney
+    cfg.script12.bootstrapN = 2000;               % Cliff's delta 95% CI resamples
 
     %% Ridge handoff QC (Script 4)
     cfg.ridgeHandoff.minRidgeCoverage = 0.50;

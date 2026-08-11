@@ -1,5 +1,43 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Script 11 without WP_TS (mean + median)
+
+### Changed
+- Script 11 reads Script 7 `ClusterMembership.RawPeriod_h` only — **no WP_TS load**
+- Reports **mean and median** period per mouse and cohort (`MeanPeriod_h` / `MedianPeriod_h`, `MeanTau_Cohort_h` / `MedianTau_Cohort_h`)
+- Figure stem: `Supp_DominantPeriod_ClusterPeriod_3Cluster` (candidate-period violins; cohort mean/median guides)
+
+## [Unreleased] — Script 12 amplitude mean±SD, clean panels
+
+### Changed
+- Amplitude error bars: mean ± SD (was SEM)
+- Removed on-figure footnotes (n F/M, star key); BH-FDR stars retained
+- Activity grids: removed per-panel `n =` annotations (n remains in `Sex_N_ByCluster`)
+
+## [Unreleased] — Script 12 amplitude-only (first peak post-LD)
+
+### Changed
+- Amplitude metric: first local max after lights-off − pre-off baseline (W ≈ 1× cluster period, cap 3 h; window-max fallback)
+- Y-axis: `Amplitude (post-light transition; au)`; figures `Sex_Amplitude_PostLD_*`
+- Removed ridge-power panels and day-mean ridge metric; coherence remains out of scope
+
+## [Unreleased] — Script 12 sex amplitude F vs M tests
+
+### Changed
+- Amplitude panels: removed “exploratory — not confirmatory” banner
+- F vs M two-sided Mann–Whitney U per photoperiod; Cliff’s δ + bootstrap 95% CI; BH-FDR within ClusterID×Metric
+- Stars on amplitude figures from Q_BH (* / ** / ***); table `Sex_Amplitude_Stats_BH_FDR.csv`
+
+## [Unreleased] — Script 12 sex-stratified activity + amplitude
+
+### Added
+- **Extended Script 12** — Female|Male side-by-side 24h ZT activity grids (L12–L22) for UR_1_3 C01, UR_3_6 C01, UR_3_6 C02
+- Amplitude panels (F/M overlaid): mean ridge power + LD-transition spike vs photoperiod; `Sex_Amplitude_PerMouse.csv`
+- Entry: `run_extended_script12_sex_stratified_profiles(cohortRoot)`
+
+### Changed
+- Removed sex-split phase coherence / WP_TS rebuild (Script 7 `PhaseCoherence_24h` is pooled; coherence omitted from Script 12)
+
 ## [Unreleased] — Script 11 dominant UR period summary
 
 ### Added

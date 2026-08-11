@@ -1,4 +1,4 @@
-# Extended UR — Scripts 4–11
+# Extended UR — Scripts 4–12
 
 Extended pipeline beside **frozen Core Scripts 1–3**. Reuses Core `Handoff/` outputs; adds ridge validation, transition resync, LME/FDR, phase/profile analyses, and manuscript figure assembly.
 
@@ -37,8 +37,11 @@ run_extended_script9_supplementary_figures
 % 10 — locked manuscript figures (Figs 1–7) + Package_Manuscript handoff zip folder
 run_extended_script10_manuscript_figures   % pick cohort root (e.g. C57_LP)
 
-% 11 — dominant UR period summary + supplemental violins (after Script 7)
+% 11 — dominant UR mean+median periods from Script 7 membership (no WP_TS)
 run_extended_script11_dominant_periods     % pick cohort root (e.g. C57_LP)
+
+% 12 — Female|Male activity + post-LD first-peak amplitude (F vs M BH-FDR; after Script 7)
+run_extended_script12_sex_stratified_profiles  % pick cohort root (e.g. C57_LP)
 ```
 
 ### One-liner paths (non-interactive)
@@ -56,6 +59,7 @@ cfg = extended_defaults(); cfg.plotMode = 'development';
 cfg = extended_apply_plot_cfg(cfg);
 extended_script10_run(cohort, cfg);   % batch-safe (no questdlg)
 run_extended_script11_dominant_periods(cohort)
+run_extended_script12_sex_stratified_profiles(cohort)
 ```
 
 ## Script map
@@ -69,20 +73,25 @@ run_extended_script11_dominant_periods(cohort)
 | **8** | — | Cohort root | `Script8_PublicationFigures_*` composites |
 | **9** | — | Cohort root | `Script9_SupplementaryFigures_*` (sex, cluster grids) |
 | **10** | — | Cohort root | `Script10_ManuscriptFigures_*` locked Figs 1–7 + `Package_Manuscript/` |
-| **11** | — | Cohort root (Scripts 4+7 outputs) | `Script11_DominantPeriod_*` summary tables + 3-panel supp violins |
+| **11** | — | Cohort root (Script 7 profiles) | `Script11_DominantPeriod_*` mean+median τ + violins |
+| **12** | — | Cohort root (Script 7 profiles) | `Script12_SexStratifiedProfiles_*` F\|M activity + post-LD first-peak amplitude |
 
 ## Script 11 dominant period outputs
 
-Read-only post-hoc after Script 7. Uses Script 7 cluster lock (UR_1_3 C01, UR_3_6 C01+C02) and Script 4 `WP_TS` ridge periods.
+Read-only after Script 7. Uses locked clusters (UR_1_3 C01, UR_3_6 C01+C02) and **`ClusterMembership.RawPeriod_h`** (no `WP_TS`). Per mouse: mean + median of candidate periods; cohort: mean + median across mice.
 
 | Output | Use |
 |--------|-----|
-| `Tables/DominantPeriod_ClusterSummary.csv` | Main-text median τ + IQR across mice (`IncludeInMainText == true` rows) |
-| `Tables/DominantPeriod_PerMouse.csv` | Per-mouse audit |
-| `Tables/DominantPeriod_Output.xlsx` | Same tables + Settings workbook |
-| `Figures/Supp_DominantPeriod_RidgePeriod_3Cluster.*` | Supplemental nonstationarity figure (Paul Tol band colours) |
+| `Tables/DominantPeriod_ClusterSummary.csv` | Cohort median/mean τ + IQR/SD (`IncludeInMainText` flag) |
+| `Tables/DominantPeriod_PerMouse.csv` | Per-mouse mean + median audit |
+| `Tables/DominantPeriod_Output.xlsx` | Same tables + Settings |
+| `Figures/Supp_DominantPeriod_ClusterPeriod_3Cluster.*` | Per-mouse candidate-period violins (magenta median / black mean) |
 
 Script 11 is **standalone** — Script 10 does not copy these into `Package_Manuscript/`.
+
+## Script 12 sex-stratified profiles
+
+Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C01, UR_3_6 C02, plus **post–lights-off first-peak amplitude** (F/M overlaid; mean ± SD; Mann–Whitney + BH-FDR stars only on figure). Amplitude = first local max after lights-off minus pre-off baseline (search window ≈ 1× cluster period, capped at 3 h). No coherence / ridge-power panels. Standalone; not in Script 10.
 
 ## Script 10 locked main figures
 
