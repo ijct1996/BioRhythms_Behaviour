@@ -7,15 +7,20 @@ function out = extended_script11_dominant_period_run(cohortRoot, cfg)
 %
 %   Per mouse: mean + median of candidate RawPeriod_h within each locked cluster.
 %   Cohort: mean + median across mice (of those per-mouse summaries).
+%   Sex inferred from SignalID (same rules as Script 12); figures coloured F/M.
 %
 %   Outputs under {cohortRoot}/Script11_DominantPeriod_{Publication|Development}/
 %     Tables/DominantPeriod_ClusterSummary.csv
 %     Tables/DominantPeriod_PerMouse.csv
+%     Tables/DominantPeriod_ByCluster.csv   (Cluster, N, Median_h, Median_SD, Mean_h, Mean_SD)
+%     Tables/DominantPeriod_ByMouse.csv    (Cluster, BandName, Median_h, Median_SD, Mean_h, Mean_SD, SignalID, Sex)
 %     Tables/DominantPeriod_Output.xlsx
-%     Figures/Supp_DominantPeriod_ClusterPeriod_3Cluster.{jpeg|png}
+%     Figures/Supp_DominantPeriod_ClusterPeriod_{Band}_C{rank}.*   (stable mouse order; F/M coloured)
+%     Figures/Supp_DominantPeriod_PopulationByCluster.*            (pooled; one violin per cluster)
+%     Figures/Supp_DominantPeriod_PopulationByCluster_BySex.*      (F|M violins per cluster)
 
     SCRIPT_NAME = 'extended_script11_dominant_period_run';
-    SCRIPT_VERSION = '1.1';
+    SCRIPT_VERSION = '2.0';
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -68,13 +73,14 @@ function out = extended_script11_dominant_period_run(cohortRoot, cfg)
     p0Ref = script11_resolve_p0_(paths.handoffRoot, cfg.script11.defaultP0_h, LOG);
 
     [clusterTable, mouseTable] = script11_compute_tables_(candTable, resolved, clusterSummary, p0Ref, cfg, LOG);
+    activityZT = script11_read_sheet_(paths.profilesXlsx, 'ActivityComponent_24h');
+    [clusterCompact, mouseCompact] = script11_make_compact_tables_(mouseTable, resolved, activityZT, LOG);
 
     settingsTable = script11_make_settings_table_(SCRIPT_NAME, SCRIPT_VERSION, paths, p0Ref, cfg);
-    tablePaths = script11_write_tables_(outDirs.tables, settingsTable, clusterTable, mouseTable, LOG);
+    tablePaths = script11_write_tables_(outDirs.tables, settingsTable, clusterTable, mouseTable, ...
+        clusterCompact, mouseCompact, LOG);
 
-    figPath = fullfile(outDirs.figures, ['Supp_DominantPeriod_ClusterPeriod_3Cluster' theme.ext]);
-    script11_plot_violin_panels_(figPath, mouseTable, candTable, resolved, theme, pal, LOG);
-    script11_log_(LOG, 'Wrote figure %s', figPath);
+    figPaths = script11_write_all_figures_(outDirs.figures, mouseTable, candTable, resolved, theme, pal, LOG);
 
     out = struct();
     out.cohortRoot = paths.cohortRoot;
@@ -82,15 +88,21 @@ function out = extended_script11_dominant_period_run(cohortRoot, cfg)
     out.modeLabel = modeLabel;
     out.clusterSummaryTable = clusterTable;
     out.perMouseTable = mouseTable;
+    out.byClusterTable = clusterCompact;
+    out.byMouseTable = mouseCompact;
     out.tablePaths = tablePaths;
-    out.figurePath = figPath;
+    out.figurePaths = figPaths;
     out.logPath = logPath;
     out.p0Reference_h = p0Ref;
 
     fprintf('Cluster summary: %s\n', tablePaths.clusterSummaryCsv);
     fprintf('Per-mouse table: %s\n', tablePaths.perMouseCsv);
+    fprintf('By-cluster:      %s\n', tablePaths.byClusterCsv);
+    fprintf('By-mouse:        %s\n', tablePaths.byMouseCsv);
     fprintf('Workbook:        %s\n', tablePaths.xlsx);
-    fprintf('Figure:          %s\n', figPath);
+    for fi = 1:numel(figPaths)
+        fprintf('Figure:          %s\n', figPaths(fi));
+    end
     fprintf('Log:             %s\n', logPath);
 end
 
@@ -102,26 +114,35 @@ function settingsTable = script11_make_settings_table_(scriptName, scriptVersion
         string(paths.cohortRoot); string(paths.profilesXlsx); ...
         string(cfg.plotMode); string(p0Ref); ...
         "Script7 ClusterMembership.RawPeriod_h (candidate-level; no WP_TS)"; ...
-        "Per-mouse mean+median of candidate periods within locked clusters; cohort mean+median across mice"];
+        "ByCluster.N=mice with ridge candidates; N_Mice_Activity from ActivityComponent (may be lower). ByMouse.N_Candidates=period values (duplicates overlap on plot). Activity panel n ≠ Script11 period N."];
     settingsTable = table(names, vals, 'VariableNames', {'Setting', 'Value'});
 end
 
-function tablePaths = script11_write_tables_(tablesDir, settingsTable, clusterTable, mouseTable, LOG)
+function tablePaths = script11_write_tables_(tablesDir, settingsTable, clusterTable, mouseTable, ...
+        clusterCompact, mouseCompact, LOG)
     tablePaths = struct();
     tablePaths.clusterSummaryCsv = fullfile(tablesDir, 'DominantPeriod_ClusterSummary.csv');
     tablePaths.perMouseCsv = fullfile(tablesDir, 'DominantPeriod_PerMouse.csv');
+    tablePaths.byClusterCsv = fullfile(tablesDir, 'DominantPeriod_ByCluster.csv');
+    tablePaths.byMouseCsv = fullfile(tablesDir, 'DominantPeriod_ByMouse.csv');
     tablePaths.xlsx = fullfile(tablesDir, 'DominantPeriod_Output.xlsx');
 
     writetable(clusterTable, tablePaths.clusterSummaryCsv);
     writetable(mouseTable, tablePaths.perMouseCsv);
+    writetable(clusterCompact, tablePaths.byClusterCsv);
+    writetable(mouseCompact, tablePaths.byMouseCsv);
     script11_log_(LOG, 'Wrote %s (%d rows)', tablePaths.clusterSummaryCsv, height(clusterTable));
     script11_log_(LOG, 'Wrote %s (%d rows)', tablePaths.perMouseCsv, height(mouseTable));
+    script11_log_(LOG, 'Wrote %s (%d rows)', tablePaths.byClusterCsv, height(clusterCompact));
+    script11_log_(LOG, 'Wrote %s (%d rows)', tablePaths.byMouseCsv, height(mouseCompact));
 
     script11_safe_delete_file_(tablePaths.xlsx);
     script11_safe_writetable_(settingsTable, tablePaths.xlsx, 'Settings');
     script11_safe_writetable_(clusterTable, tablePaths.xlsx, 'ClusterSummary');
     script11_safe_writetable_(mouseTable, tablePaths.xlsx, 'PerMouse');
-    script11_log_(LOG, 'Wrote %s (Settings, ClusterSummary, PerMouse)', tablePaths.xlsx);
+    script11_safe_writetable_(clusterCompact, tablePaths.xlsx, 'ByCluster');
+    script11_safe_writetable_(mouseCompact, tablePaths.xlsx, 'ByMouse');
+    script11_log_(LOG, 'Wrote %s (Settings, ClusterSummary, PerMouse, ByCluster, ByMouse)', tablePaths.xlsx);
 end
 
 function script11_safe_writetable_(T, xlsxPath, sheetName)
@@ -212,6 +233,10 @@ function theme = script11_theme_(cfg, pal)
     theme.meanLineWidth = 1.6;
     theme.violinAlpha = 0.55;
     theme.violinWidth = 0.38;
+    theme.violinNGrid = 401;               % KDE evaluation points
+    theme.violinBwPad = 1.25;              % extend support by this × bandwidth (capped)
+    theme.violinBwCapFrac = 0.30;          % bw ≤ this × data span (stops empty long tails)
+    theme.showCandidatePoints = true;      % jitter raw periods on mouse violins
 end
 
 %% Data load / membership
@@ -384,6 +409,7 @@ function [clusterTable, mouseTable] = script11_compute_tables_(candTable, resolv
 
         mice = unique(string(sub.SignalID));
         mice = mice(strlength(mice) > 0);
+        sexVec = script11_infer_sex_(mice);
         perMouseMedian = NaN(numel(mice), 1);
         perMouseMean = NaN(numel(mice), 1);
         perMouseIQR = NaN(numel(mice), 1);
@@ -404,7 +430,7 @@ function [clusterTable, mouseTable] = script11_compute_tables_(candTable, resolv
             end
             perMouseCand(m) = numel(y);
             mouseRows(end + 1, :) = {string(R.ClusterID), string(R.BandName), double(R.ClusterRank), ...
-                logical(R.MainText), string(mice(m)), perMouseMedian(m), perMouseMean(m), ...
+                logical(R.MainText), string(mice(m)), string(sexVec(m)), perMouseMedian(m), perMouseMean(m), ...
                 perMouseIQR(m), perMouseSD(m), double(perMouseCand(m))}; %#ok<AGROW>
         end
 
@@ -414,6 +440,13 @@ function [clusterTable, mouseTable] = script11_compute_tables_(candTable, resolv
         sdMice = std(perMouseMedian, 'omitnan');
         medWithin = median(perMouseIQR, 'omitnan');
         [nearHarm, deltaHarm, kNear] = script11_nearest_harmonic_(medCohort, p0Ref, cfg.script11.harmonicKMax);
+
+        nF = sum(sexVec == "Female");
+        nM = sum(sexVec == "Male");
+        medF = median(perMouseMedian(sexVec == "Female"), 'omitnan');
+        medM = median(perMouseMedian(sexVec == "Male"), 'omitnan');
+        meanF = mean(perMouseMean(sexVec == "Female"), 'omitnan');
+        meanM = mean(perMouseMean(sexVec == "Male"), 'omitnan');
 
         hit = CS(string(CS.ClusterID) == string(R.ClusterID), :);
         script7Median = NaN;
@@ -430,25 +463,123 @@ function [clusterTable, mouseTable] = script11_compute_tables_(candTable, resolv
         clusterRows(end + 1, :) = {string(R.ClusterID), string(R.BandName), double(R.ClusterRank), ...
             logical(R.MainText), double(R.PeriodLow_h), double(R.PeriodHigh_h), ...
             double(R.PeriodCentre_h), medCohort, meanCohort, iqrMice, sdMice, medWithin, ...
-            double(numel(mice)), double(height(unique(string(sub.CandidateID)))), ...
+            double(numel(mice)), double(nF), double(nM), medF, medM, meanF, meanM, ...
+            double(height(unique(string(sub.CandidateID)))), ...
             double(sum(perMouseCand)), script7Median, script7IQR, ...
             p0Ref, kNear, nearHarm, deltaHarm}; %#ok<AGROW>
 
-        script11_log_(LOG, '%s: median=%.3f h, mean=%.3f h, IQR mice=%.3f, n=%d mice', ...
-            char(R.ClusterID), medCohort, meanCohort, iqrMice, numel(mice));
+        script11_log_(LOG, '%s: median=%.3f h, mean=%.3f h, IQR mice=%.3f, n=%d (F=%d M=%d)', ...
+            char(R.ClusterID), medCohort, meanCohort, iqrMice, numel(mice), nF, nM);
     end
 
-    mouseHdr = {'ClusterID','BandName','ClusterRank','IncludeInMainText','SignalID', ...
+    mouseHdr = {'ClusterID','BandName','ClusterRank','IncludeInMainText','SignalID','Sex', ...
         'MedianPeriod_h','MeanPeriod_h','IQR_Period_h','SD_Period_h','N_Candidates'};
     clusterHdr = {'ClusterID','BandName','ClusterRank','IncludeInMainText', ...
         'PeriodLow_h','PeriodHigh_h','PeriodCentre_h', ...
         'MedianTau_Cohort_h','MeanTau_Cohort_h','IQR_AcrossMice_h','SD_AcrossMice_h', ...
-        'MedianWithinMouseIQR_h','N_Mice','N_Candidates','N_CandidatePeriodValues', ...
+        'MedianWithinMouseIQR_h','N_Mice','N_Female','N_Male', ...
+        'MedianTau_Female_h','MedianTau_Male_h','MeanTau_Female_h','MeanTau_Male_h', ...
+        'N_Candidates','N_CandidatePeriodValues', ...
         'Script7_MedianRawPeriod_h','Script7_IQRRawPeriod_h', ...
         'P0_Reference_h','NearestHarmonic_k','NearestHarmonic_h','DeltaFromHarmonic_h'};
 
     mouseTable = script11_rows_to_table_(mouseRows, mouseHdr);
     clusterTable = script11_rows_to_table_(clusterRows, clusterHdr);
+end
+
+function [clusterCompact, mouseCompact] = script11_make_compact_tables_(mouseTable, resolved, activityZT, LOG)
+% Manuscript-oriented exports.
+% ByCluster: Median_h/Median_SD = median and SD of per-mouse medians;
+%            Mean_h/Mean_SD = mean and SD of per-mouse means; N = mice with period candidates.
+%            N_Mice_Activity = unique mice in ActivityComponent_24h (may differ; see Settings).
+% ByMouse:   Median_h/Mean_h from candidate periods; Median_SD and Mean_SD are both
+%            the within-mouse SD of candidate periods; N_Candidates = plotted period count.
+
+    if nargin < 3
+        activityZT = table();
+    end
+    if nargin < 4
+        LOG = [];
+    end
+
+    clusterRows = {};
+    for i = 1:numel(resolved)
+        R = resolved(i);
+        sub = mouseTable(string(mouseTable.ClusterID) == string(R.ClusterID), :);
+        meds = double(sub.MedianPeriod_h);
+        means = double(sub.MeanPeriod_h);
+        meds = meds(isfinite(meds));
+        means = means(isfinite(means));
+        n = height(sub);
+        nCand = 0;
+        if ismember('N_Candidates', sub.Properties.VariableNames)
+            nCand = sum(double(sub.N_Candidates), 'omitnan');
+        end
+        nAct = script11_n_mice_activity_(activityZT, R.ClusterID);
+        medH = NaN; medSD = NaN; meanH = NaN; meanSD = NaN;
+        if ~isempty(meds)
+            medH = median(meds, 'omitnan');
+            if numel(meds) > 1
+                medSD = std(meds, 'omitnan');
+            else
+                medSD = 0;
+            end
+        end
+        if ~isempty(means)
+            meanH = mean(means, 'omitnan');
+            if numel(means) > 1
+                meanSD = std(means, 'omitnan');
+            else
+                meanSD = 0;
+            end
+        end
+        clusterRows(end + 1, :) = {string(script11_cluster_axis_label_(R)), double(n), ...
+            medH, medSD, meanH, meanSD, double(nCand), double(nAct)}; %#ok<AGROW>
+        if ~isempty(LOG)
+            script11_log_(LOG, 'ByCluster %s: N_Mice=%d, N_Candidates=%d, N_Mice_Activity=%d', ...
+                char(script11_cluster_axis_label_(R)), n, nCand, nAct);
+        end
+    end
+    clusterCompact = script11_rows_to_table_(clusterRows, ...
+        {'Cluster','N','Median_h','Median_SD','Mean_h','Mean_SD','N_Candidates','N_Mice_Activity'});
+
+    mouseRows = {};
+    if ~isempty(mouseTable)
+        for r = 1:height(mouseTable)
+            Rfake = struct('BandName', mouseTable.BandName(r), 'ClusterRank', mouseTable.ClusterRank(r));
+            clusterLbl = string(script11_cluster_axis_label_(Rfake));
+            sdWithin = double(mouseTable.SD_Period_h(r));
+            nCand = NaN;
+            if ismember('N_Candidates', mouseTable.Properties.VariableNames)
+                nCand = double(mouseTable.N_Candidates(r));
+            end
+            mouseRows(end + 1, :) = {clusterLbl, string(mouseTable.BandName(r)), ...
+                double(mouseTable.MedianPeriod_h(r)), sdWithin, ...
+                double(mouseTable.MeanPeriod_h(r)), sdWithin, ...
+                string(mouseTable.SignalID(r)), string(mouseTable.Sex(r)), nCand}; %#ok<AGROW>
+        end
+    end
+    mouseCompact = script11_rows_to_table_(mouseRows, ...
+        {'Cluster','BandName','Median_h','Median_SD','Mean_h','Mean_SD','SignalID','Sex','N_Candidates'});
+end
+
+function n = script11_n_mice_activity_(activityZT, clusterID)
+    n = NaN;
+    if isempty(activityZT)
+        return;
+    end
+    need = {'ClusterID','SignalID'};
+    if ~all(ismember(need, activityZT.Properties.VariableNames))
+        return;
+    end
+    B = activityZT(string(activityZT.ClusterID) == string(clusterID), :);
+    if isempty(B)
+        n = 0;
+        return;
+    end
+    ids = string(B.SignalID);
+    ids = ids(strlength(ids) > 0);
+    n = numel(unique(ids));
 end
 
 function [nearH, deltaH, kNear] = script11_nearest_harmonic_(period_h, p0, kMax)
@@ -465,115 +596,377 @@ function [nearH, deltaH, kNear] = script11_nearest_harmonic_(period_h, p0, kMax)
     kNear = ks(idx);
 end
 
-%% Plotting — per-mouse candidate-period violins (mean + median lines)
-function script11_plot_violin_panels_(outPath, mouseTable, candTable, resolved, theme, pal, LOG)
-    nPanels = numel(resolved);
-    fig = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 300 * nPanels + 120 560]);
-    t = tiledlayout(fig, 1, nPanels, 'TileSpacing', 'compact', 'Padding', 'compact');
-
-    for i = 1:nPanels
+%% Plotting — separate per-cluster mouse violins + population-by-cluster
+function figPaths = script11_write_all_figures_(figDir, mouseTable, candTable, resolved, theme, pal, LOG)
+    figPaths = strings(0, 1);
+    for i = 1:numel(resolved)
         R = resolved(i);
-        ax = nexttile(t, i);
-        hold(ax, 'on'); set(ax, 'Color', 'w');
-
-        subCand = candTable(string(candTable.ClusterID) == string(R.ClusterID), :);
-        subMouse = mouseTable(string(mouseTable.ClusterID) == string(R.ClusterID), :);
-        if isempty(subMouse)
-            title(ax, sprintf('%s C%02d — no mice', char(R.BandName), R.ClusterRank), ...
-                'Interpreter', 'none');
-            continue;
-        end
-
-        [~, sortIdx] = sort(double(subMouse.MedianPeriod_h), 'ascend', 'MissingPlacement', 'last');
-        subMouse = subMouse(sortIdx, :);
-        mice = string(subMouse.SignalID);
-        bandColor = script11_band_color_(pal, R.BandName);
-
-        for m = 1:numel(mice)
-            y = double(subCand.RawPeriod_h(string(subCand.SignalID) == mice(m)));
-            y = y(isfinite(y) & y > 0);
-            if isempty(y), continue; end
-            script11_draw_violin_(ax, m, y, bandColor, theme);
-        end
-
-        % Cohort median / mean of per-mouse summaries (horizontal guides)
-        medCohort = median(double(subMouse.MedianPeriod_h), 'omitnan');
-        meanCohort = mean(double(subMouse.MeanPeriod_h), 'omitnan');
-        if isfinite(medCohort)
-            yline(ax, medCohort, ':', 'Color', theme.medianColor, ...
-                'LineWidth', theme.medianLineWidth, 'HandleVisibility', 'off');
-        end
-        if isfinite(meanCohort)
-            yline(ax, meanCohort, '-', 'Color', theme.meanColor, ...
-                'LineWidth', theme.meanLineWidth, 'HandleVisibility', 'off');
-        end
-
-        ax.XLim = [0.4, max(numel(mice), 1) + 0.6];
-        ax.XTick = 1:numel(mice);
-        ax.XTickLabel = arrayfun(@(k) sprintf('M%d', k), 1:numel(mice), 'UniformOutput', false);
-        xlabel(ax, 'Mouse (sorted by median τ)', 'FontName', theme.fontName, ...
-            'FontSize', theme.labelSize, 'FontWeight', 'bold');
-
-        yLo = R.FilterLow_h;
-        yHi = R.FilterHigh_h;
-        if ~isfinite(yLo) || ~isfinite(yHi) || yHi <= yLo
-            yLo = R.PeriodLow_h;
-            yHi = R.PeriodHigh_h;
-        end
-        pad = 0.08 * max(yHi - yLo, 0.1);
-        ylim(ax, [yLo - pad, yHi + pad]);
-        ylabel(ax, 'Candidate period (h)', 'FontName', theme.fontName, ...
-            'FontSize', theme.labelSize, 'FontWeight', 'bold');
-        title(ax, sprintf('%s C%02d (%.2f–%.2f h)', char(R.BandName), R.ClusterRank, ...
-            R.PeriodLow_h, R.PeriodHigh_h), ...
-            'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
-            'Interpreter', 'none');
-        script11_style_axes_(ax, theme);
+        stem = sprintf('Supp_DominantPeriod_ClusterPeriod_%s_C%02d', ...
+            char(regexprep(char(R.BandName), '[^A-Za-z0-9]+', '_')), R.ClusterRank);
+        outPath = fullfile(figDir, [stem theme.ext]);
+        script11_plot_one_cluster_mice_(outPath, mouseTable, candTable, R, theme, pal);
+        script11_log_(LOG, 'Wrote figure %s', outPath);
+        figPaths(end + 1, 1) = string(outPath); %#ok<AGROW>
     end
 
-    exportgraphics(fig, outPath, 'Resolution', theme.dpi);
-    close(fig);
-    script11_log_(LOG, 'Figure exported: %s', outPath);
+    popPooled = fullfile(figDir, ['Supp_DominantPeriod_PopulationByCluster' theme.ext]);
+    script11_plot_population_pooled_(popPooled, mouseTable, resolved, theme, pal);
+    script11_log_(LOG, 'Wrote figure %s', popPooled);
+    figPaths(end + 1, 1) = string(popPooled);
+
+    popSex = fullfile(figDir, ['Supp_DominantPeriod_PopulationByCluster_BySex' theme.ext]);
+    script11_plot_population_by_sex_(popSex, mouseTable, resolved, theme, pal);
+    script11_log_(LOG, 'Wrote figure %s', popSex);
+    figPaths(end + 1, 1) = string(popSex);
 end
 
-function script11_draw_violin_(ax, xCenter, y, faceColor, theme)
-    y = y(:);
-    y = y(isfinite(y));
-    if numel(y) < 2
-        if numel(y) == 1
-            plot(ax, xCenter, y, 'o', 'Color', faceColor, 'MarkerFaceColor', faceColor, ...
-                'MarkerSize', 5, 'HandleVisibility', 'off');
-        end
+function script11_plot_one_cluster_mice_(outPath, mouseTable, candTable, R, theme, pal)
+% Stable SignalID order (not sorted by sex or median); violins coloured by sex.
+    fig = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 960 640]);
+    ax = axes(fig); hold(ax, 'on'); set(ax, 'Color', 'w');
+
+    subCand = candTable(string(candTable.ClusterID) == string(R.ClusterID), :);
+    subMouse = mouseTable(string(mouseTable.ClusterID) == string(R.ClusterID), :);
+    if isempty(subMouse)
+        title(ax, sprintf('%s — no mice', script11_cluster_axis_label_(R)), 'Interpreter', 'none');
+        exportgraphics(fig, outPath, 'Resolution', theme.dpi);
+        close(fig);
         return;
     end
 
-    nBins = max(8, min(24, round(sqrt(numel(y)))));
-    yMin = min(y);
-    yMax = max(y);
-    if yMax <= yMin
-        yMax = yMin + 0.01;
+    if ~ismember('Sex', subMouse.Properties.VariableNames)
+        subMouse.Sex = script11_infer_sex_(string(subMouse.SignalID));
     end
-    edges = linspace(yMin, yMax, nBins + 1);
-    counts = histcounts(y, edges, 'Normalization', 'pdf');
-    centers = (edges(1:end-1) + edges(2:end)) / 2;
-    maxC = max(counts);
-    if ~isfinite(maxC) || maxC <= 0
-        maxC = 1;
+
+    % Stable alphabetical SignalID order so M# is reproducible across runs
+    [~, sortIdx] = sort(string(subMouse.SignalID));
+    subMouse = subMouse(sortIdx, :);
+    mice = string(subMouse.SignalID);
+
+    ySeen = [];
+    for m = 1:numel(mice)
+        y = double(subCand.RawPeriod_h(string(subCand.SignalID) == mice(m)));
+        y = y(isfinite(y) & y > 0);
+        if isempty(y), continue; end
+        faceColor = script11_sex_color_(pal, subMouse.Sex(m));
+        yExt = script11_draw_violin_(ax, m, y, faceColor, theme);
+        ySeen = [ySeen; y(:); yExt(:)]; %#ok<AGROW>
     end
-    halfW = theme.violinWidth * (counts / maxC);
-    xx = [xCenter - halfW, fliplr(xCenter + halfW * 0.05)];
-    yy = [centers, fliplr(centers)];
-    patch(ax, xx, yy, faceColor, 'FaceAlpha', theme.violinAlpha, ...
-        'EdgeColor', faceColor * 0.65, 'LineWidth', 0.6, 'HandleVisibility', 'off');
+
+    ax.XLim = [0.4, max(numel(mice), 1) + 0.6];
+    ax.XTick = 1:numel(mice);
+    ax.XTickLabel = arrayfun(@(k) sprintf('M%d', k), 1:numel(mice), 'UniformOutput', false);
+    xlabel(ax, 'Mouse', 'FontName', theme.fontName, ...
+        'FontSize', theme.labelSize, 'FontWeight', 'bold');
+
+    yHi = R.FilterHigh_h;
+    if ~isfinite(yHi)
+        yHi = R.PeriodHigh_h;
+    end
+    if ~isempty(ySeen)
+        yHi = max(yHi, max(ySeen, [], 'omitnan'));
+    end
+    if ~isfinite(yHi) || yHi <= 0
+        yHi = 1;
+    end
+    pad = 0.06 * max(yHi, 0.1);
+    ylim(ax, [0, yHi + pad]);
+    ylabel(ax, 'Period (h)', 'FontName', theme.fontName, ...
+        'FontSize', theme.labelSize, 'FontWeight', 'bold');
+    title(ax, sprintf('%s (%.2f–%.2f h)', script11_cluster_axis_label_(R), ...
+        R.PeriodLow_h, R.PeriodHigh_h), ...
+        'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
+        'Interpreter', 'none');
+    script11_style_axes_(ax, theme);
+    script11_add_sex_mean_median_legend_(ax, theme, pal);
+
+    exportgraphics(fig, outPath, 'Resolution', theme.dpi);
+    close(fig);
+end
+
+function script11_plot_population_pooled_(outPath, mouseTable, resolved, theme, pal)
+% One violin per cluster = all mice (no sex split).
+    fig = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 780 640]);
+    ax = axes(fig); hold(ax, 'on'); set(ax, 'Color', 'w');
+
+    nC = numel(resolved);
+    xLabels = strings(nC, 1);
+    yAll = [];
+    themePop = theme;
+    themePop.showCandidatePoints = false;
+
+    for i = 1:nC
+        R = resolved(i);
+        xLabels(i) = string(script11_cluster_axis_label_(R));
+        subMouse = mouseTable(string(mouseTable.ClusterID) == string(R.ClusterID), :);
+        y = double(subMouse.MedianPeriod_h);
+        y = y(isfinite(y) & y > 0);
+        if isempty(y)
+            continue;
+        end
+        bandColor = script11_band_color_(pal, R.BandName);
+        yExt = script11_draw_violin_(ax, i, y, bandColor, themePop);
+        rng(11 + i);
+        jitter = (rand(numel(y), 1) - 0.5) * 0.18;
+        scatter(ax, i + jitter, y, 28, ...
+            'MarkerFaceColor', bandColor, 'MarkerEdgeColor', bandColor * 0.7, ...
+            'MarkerFaceAlpha', 0.55, 'HandleVisibility', 'off');
+        yAll = [yAll; y(:); yExt(:)]; %#ok<AGROW>
+    end
+
+    set(ax, 'XTick', 1:nC, 'XTickLabel', cellstr(xLabels), 'XLim', [0.4, nC + 0.6]);
+    xlabel(ax, 'Cluster', 'FontName', theme.fontName, 'FontSize', theme.labelSize, 'FontWeight', 'bold');
+    ylabel(ax, 'Period (h)', 'FontName', theme.fontName, ...
+        'FontSize', theme.labelSize, 'FontWeight', 'bold');
+    title(ax, 'Population spread of per-mouse median period by cluster', ...
+        'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
+        'Interpreter', 'none');
+    if ~isempty(yAll)
+        yHi = max(yAll, [], 'omitnan');
+        pad = 0.08 * max(yHi, 0.2);
+        ylim(ax, [0, yHi + pad]);
+    else
+        ylim(ax, [0, 1]);
+    end
+    script11_style_axes_(ax, theme);
+    script11_add_mean_median_legend_(ax, theme);
+
+    exportgraphics(fig, outPath, 'Resolution', theme.dpi);
+    close(fig);
+end
+
+function script11_plot_population_by_sex_(outPath, mouseTable, resolved, theme, pal)
+% Per cluster: Female | Male violins of per-mouse median periods (exploratory).
+    fig = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 920 640]);
+    ax = axes(fig); hold(ax, 'on'); set(ax, 'Color', 'w');
+
+    nC = numel(resolved);
+    xLabels = strings(nC, 1);
+    yAll = [];
+    dx = 0.30;
+    sexes = ["Female", "Male"];
+    offsets = [-dx, +dx];
+
+    if ~ismember('Sex', mouseTable.Properties.VariableNames)
+        mouseTable.Sex = script11_infer_sex_(string(mouseTable.SignalID));
+    end
+
+    themePop = theme;
+    themePop.showCandidatePoints = false;
+    themePop.violinWidth = min(theme.violinWidth, 0.22);
+
+    for i = 1:nC
+        R = resolved(i);
+        xLabels(i) = string(script11_cluster_axis_label_(R));
+        subMouse = mouseTable(string(mouseTable.ClusterID) == string(R.ClusterID), :);
+        for si = 1:numel(sexes)
+            y = double(subMouse.MedianPeriod_h(string(subMouse.Sex) == sexes(si)));
+            y = y(isfinite(y) & y > 0);
+            if isempty(y)
+                continue;
+            end
+            x = i + offsets(si);
+            faceColor = script11_sex_color_(pal, sexes(si));
+            yExt = script11_draw_violin_(ax, x, y, faceColor, themePop);
+            rng(11 + 10 * i + si);
+            jitter = (rand(numel(y), 1) - 0.5) * 0.08;
+            scatter(ax, x + jitter, y, 28, ...
+                'MarkerFaceColor', faceColor, 'MarkerEdgeColor', faceColor * 0.65, ...
+                'MarkerFaceAlpha', 0.65, 'HandleVisibility', 'off');
+            yAll = [yAll; y(:); yExt(:)]; %#ok<AGROW>
+        end
+    end
+
+    set(ax, 'XTick', 1:nC, 'XTickLabel', cellstr(xLabels), 'XLim', [0.35, nC + 0.65]);
+    xlabel(ax, 'Cluster', 'FontName', theme.fontName, ...
+        'FontSize', theme.labelSize, 'FontWeight', 'bold');
+    ylabel(ax, 'Candidate period (h)', 'FontName', theme.fontName, ...
+        'FontSize', theme.labelSize, 'FontWeight', 'bold');
+    title(ax, 'Population spread of per-mouse median period by cluster and sex', ...
+        'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
+        'Interpreter', 'none');
+    if ~isempty(yAll)
+        yHi = max(yAll, [], 'omitnan');
+        pad = 0.08 * max(yHi, 0.2);
+        ylim(ax, [0, yHi + pad]);
+    else
+        ylim(ax, [0, 1]);
+    end
+    script11_style_axes_(ax, theme);
+    script11_add_sex_mean_median_legend_(ax, theme, pal);
+
+    exportgraphics(fig, outPath, 'Resolution', theme.dpi);
+    close(fig);
+end
+
+function lbl = script11_cluster_axis_label_(R)
+% e.g. UR_1_3 C01 -> "UR 1-3 C01"
+    band = char(string(R.BandName));
+    band = regexprep(band, '^UR_', 'UR ');
+    band = strrep(band, '_', '-');
+    lbl = sprintf('%s C%02d', band, double(R.ClusterRank));
+end
+
+function script11_add_mean_median_legend_(ax, theme)
+    hMed = plot(ax, nan, nan, ':', 'Color', theme.medianColor, ...
+        'LineWidth', theme.medianLineWidth, 'DisplayName', 'Median');
+    hMean = plot(ax, nan, nan, '-', 'Color', theme.meanColor, ...
+        'LineWidth', theme.meanLineWidth, 'DisplayName', 'Mean');
+    lg = legend(ax, [hMed, hMean], {'Median', 'Mean'}, ...
+        'Location', 'southoutside', 'Orientation', 'horizontal');
+    lg.Box = 'off';
+    lg.FontName = theme.fontName;
+    lg.FontSize = theme.fontSize;
+end
+
+function script11_add_sex_mean_median_legend_(ax, theme, pal)
+    hF = patch(ax, nan, nan, pal.female, 'FaceAlpha', theme.violinAlpha, ...
+        'EdgeColor', 'none', 'DisplayName', 'Female');
+    hM = patch(ax, nan, nan, pal.male, 'FaceAlpha', theme.violinAlpha, ...
+        'EdgeColor', 'none', 'DisplayName', 'Male');
+    hMed = plot(ax, nan, nan, ':', 'Color', theme.medianColor, ...
+        'LineWidth', theme.medianLineWidth, 'DisplayName', 'Median');
+    hMean = plot(ax, nan, nan, '-', 'Color', theme.meanColor, ...
+        'LineWidth', theme.meanLineWidth, 'DisplayName', 'Mean');
+    lg = legend(ax, [hF, hM, hMed, hMean], {'Female', 'Male', 'Median', 'Mean'}, ...
+        'Location', 'southoutside', 'Orientation', 'horizontal', 'NumColumns', 4);
+    lg.Box = 'off';
+    lg.FontName = theme.fontName;
+    lg.FontSize = theme.fontSize;
+end
+
+function yExt = script11_draw_violin_(ax, xCenter, y, faceColor, theme)
+% KDE violin only when n≥3 and periods are not identical.
+% Bandwidth capped to data span so tails stay near observed points (no empty whiskers).
+% yExt is always the data [min; max] so axis limits are not inflated by KDE support.
+    yExt = [NaN; NaN];
+    y = y(:);
+    y = y(isfinite(y));
+    if isempty(y)
+        return;
+    end
 
     medY = median(y, 'omitnan');
     meanY = mean(y, 'omitnan');
-    w = theme.violinWidth;
+    w = theme.violinWidth * 0.85;
     xLine = [xCenter - w, xCenter + w];
+    yMin = min(y);
+    yMax = max(y);
+    spanRaw = yMax - yMin;
+    yExt = [yMin; yMax];
+
+    drawPointsOnly = numel(y) < 3 || spanRaw < 1e-6;
+    if drawPointsOnly
+        rng(abs(round(1e3 * xCenter + sum(y))));
+        if numel(y) == 1
+            plot(ax, xCenter, y, 'o', 'Color', faceColor, 'MarkerFaceColor', faceColor, ...
+                'MarkerSize', 6, 'HandleVisibility', 'off');
+        else
+            jitter = (rand(numel(y), 1) - 0.5) * theme.violinWidth * 0.55;
+            scatter(ax, xCenter + jitter, y, 18, ...
+                'MarkerFaceColor', faceColor, 'MarkerEdgeColor', faceColor * 0.55, ...
+                'MarkerFaceAlpha', 0.75, 'HandleVisibility', 'off');
+        end
+        plot(ax, xLine, [medY, medY], ':', 'Color', theme.medianColor, ...
+            'LineWidth', theme.medianLineWidth, 'HandleVisibility', 'off');
+        plot(ax, xLine, [meanY, meanY], '-', 'Color', theme.meanColor, ...
+            'LineWidth', theme.meanLineWidth, 'HandleVisibility', 'off');
+        return;
+    end
+
+    bw = NaN;
+    try
+        [~, ~, bw] = ksdensity(y);
+    catch
+        bw = NaN;
+    end
+    if ~isfinite(bw) || bw <= 0
+        bw = max(0.05 * spanRaw, 0.02);
+    end
+    % Cap bandwidth to a fraction of the observed span (prevents empty long tails)
+    bwCapFrac = 0.30;
+    if isfield(theme, 'violinBwCapFrac') && isfinite(theme.violinBwCapFrac)
+        bwCapFrac = double(theme.violinBwCapFrac);
+    end
+    bwCap = max(bwCapFrac * spanRaw, 0.03);
+    bw = min(bw, bwCap);
+
+    bwPad = 1.25;
+    if isfield(theme, 'violinBwPad') && isfinite(theme.violinBwPad)
+        bwPad = double(theme.violinBwPad);
+    end
+    margin = min(bwPad * bw, max(0.25 * spanRaw, 0.05));
+    nGrid = max(201, round(double(theme.violinNGrid)));
+    yGrid = linspace(yMin - margin, yMax + margin, nGrid);
+
+    f = [];
+    yg = yGrid;
+    try
+        [f, yg] = ksdensity(y, yGrid, 'Bandwidth', bw);
+    catch
+        f = [];
+    end
+    if isempty(f) || ~any(isfinite(f) & f > 0)
+        nBins = max(12, min(36, round(sqrt(numel(y)) * 3)));
+        edges = linspace(yMin - margin, yMax + margin, nBins + 1);
+        counts = histcounts(y, edges, 'Normalization', 'pdf');
+        yg = (edges(1:end-1) + edges(2:end)) / 2;
+        f = counts;
+    end
+    f = max(double(f(:))', 0);
+    yg = double(yg(:))';
+    % Soft-clip density outside the observed range so mass does not invent empty whiskers
+    outside = yg < yMin | yg > yMax;
+    f(outside) = f(outside) * 0.15;
+    maxF = max(f);
+    if ~isfinite(maxF) || maxF <= 0
+        maxF = 1;
+    end
+    f(1) = 0;
+    f(end) = 0;
+    halfW = theme.violinWidth * (f / maxF);
+    xx = [xCenter - halfW, fliplr(xCenter + halfW)];
+    yy = [yg, fliplr(yg)];
+    patch(ax, xx, yy, faceColor, 'FaceAlpha', theme.violinAlpha, ...
+        'EdgeColor', faceColor * 0.65, 'LineWidth', 0.6, 'HandleVisibility', 'off');
+
+    if isfield(theme, 'showCandidatePoints') && theme.showCandidatePoints
+        rng(abs(round(1e3 * xCenter + sum(y))));
+        jitter = (rand(numel(y), 1) - 0.5) * theme.violinWidth * 0.55;
+        scatter(ax, xCenter + jitter, y, 12, ...
+            'MarkerFaceColor', faceColor * 0.55 + [1 1 1] * 0.45, ...
+            'MarkerEdgeColor', faceColor * 0.5, 'MarkerFaceAlpha', 0.45, ...
+            'HandleVisibility', 'off');
+    end
+
     plot(ax, xLine, [medY, medY], ':', 'Color', theme.medianColor, ...
         'LineWidth', theme.medianLineWidth, 'HandleVisibility', 'off');
     plot(ax, xLine, [meanY, meanY], '-', 'Color', theme.meanColor, ...
         'LineWidth', theme.meanLineWidth, 'HandleVisibility', 'off');
+end
+
+function c = script11_sex_color_(pal, sex)
+    sx = string(sex);
+    if sx == "Female"
+        c = pal.female;
+    elseif sx == "Male"
+        c = pal.male;
+    else
+        c = pal.pooled;
+    end
+end
+
+function sx = script11_infer_sex_(signalID)
+% Same SignalID heuristics as Script 12 (exploratory display / table annotation).
+    s = lower(string(signalID));
+    sx = repmat("Unknown", numel(s), 1);
+    isFemale = contains(s, "female") | contains(s, "_f_") | contains(s, "-f-") | ...
+        startsWith(s, "f_") | startsWith(s, "f-") | endsWith(s, "_f") | endsWith(s, "-f");
+    isMale = contains(s, "male") | contains(s, "_m_") | contains(s, "-m-") | ...
+        startsWith(s, "m_") | startsWith(s, "m-") | endsWith(s, "_m") | endsWith(s, "-m");
+    isMale = isMale & ~contains(s, "female");
+    sx(isMale) = "Male";
+    sx(isFemale) = "Female";
 end
 
 function c = script11_band_color_(pal, bandName)

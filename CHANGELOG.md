@@ -1,5 +1,70 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Script 11 violin bandwidth + N clarification
+
+### Changed
+- Violins: bandwidth capped to data span; axis limits from observed periods only (no empty long tails)
+- `ByCluster`: added `N_Candidates`, `N_Mice_Activity` (ActivityComponent unique mice; may be < period `N`)
+- `ByMouse`: added `N_Candidates` (period values; identical periods can overlap visually)
+- Documented: Script 11 `N` ≠ activity-plot panel n (photoperiod-scoped activity vs all-membership period stats)
+
+## [Unreleased] — Script 11 compact ByCluster / ByMouse tables
+
+### Added
+- `DominantPeriod_ByCluster.csv`: Cluster, N, Median_h, Median_SD, Mean_h, Mean_SD
+- `DominantPeriod_ByMouse.csv`: Cluster, BandName, Median_h, Median_SD, Mean_h, Mean_SD, SignalID, Sex
+- Same sheets in `DominantPeriod_Output.xlsx` (`ByCluster`, `ByMouse`)
+
+## [Unreleased] — Script 11 violin only if n≥3
+
+### Changed
+- Script 11: KDE violins only when n≥3 points; n<3 shows points + mean/median ticks only
+
+## [Unreleased] — Script 12 amplitude ylim floor at 0
+
+### Changed
+- Script 12 post-LD amplitude figures: y-axis starts at 0
+
+## [Unreleased] — Script 11 ylim floor at 0
+
+### Changed
+- All Script 11 figure y-axes start at 0
+
+## [Unreleased] — Script 11 stable mouse order + pooled population
+
+### Changed
+- Per-mouse cluster figures: stable SignalID order (no sort by sex or median); F/M colour only
+- Removed `*_ByMedian.*` mouse figures
+- Population figures: `PopulationByCluster` = pooled (no sex split); `PopulationByCluster_BySex` = F|M (spaced)
+
+## [Unreleased] — Script 11 violin spacing + ByMedian figures
+
+### Changed
+- Population F|M violins: narrower width + larger offset so they no longer touch
+- Added per-cluster `*_ByMedian.*` figures (sort by median τ only; sex colouring retained)
+- Default per-cluster figures remain sorted by sex, then median τ
+
+## [Unreleased] — Script 11 proper violins + sex colouring
+
+### Changed
+- KDE violins taper to pointed tips (support extended ~4× bandwidth; endpoints pinned to zero)
+- Sex from SignalID (Script 12 rules): mouse figures coloured F/M; population figure = F|M pair per cluster
+- Tables: `Sex` on per-mouse; F/M n + median/mean τ on cluster summary
+- Light jitter of raw candidate points on mouse violins; south legend includes Female/Male
+
+## [Unreleased] — Script 11 violin + legend polish
+
+### Changed
+- Script 11 violins: smooth symmetric KDE (was jagged/half histogram polygons)
+- Removed full-width cohort mean/median guide lines from per-cluster mouse figures
+- South-outside legend: magenta dotted = Median, black solid = Mean (all Script 11 figures)
+
+## [Unreleased] — Script 11 separate cluster figs + population panel
+
+### Changed
+- Script 11 figures: one file per cluster (`Supp_DominantPeriod_ClusterPeriod_*_C##`)
+- Added `Supp_DominantPeriod_PopulationByCluster` — x = UR 1-3 C01 / UR 3-6 C01 / UR 3-6 C02; violin = per-mouse median period spread
+
 ## [Unreleased] — Script 11 without WP_TS (mean + median)
 
 ### Changed
