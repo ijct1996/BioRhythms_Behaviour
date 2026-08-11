@@ -1,18 +1,21 @@
 function out = extended_script11_dominant_period_run(cohortRoot, cfg)
 %EXTENDED_SCRIPT11_DOMINANT_PERIOD_RUN Dominant cluster period tables + supp violins.
 %
-%   Inputs (read-only):
+%   Inputs (read-only; no WP_TS):
 %     Script 7  SelectedValidatedUR_*Profiles/Tables/*_Output.xlsx
-%     Script 4  ExtendedHandoff/AcrossPhotoperiod_Input/WP_TS__*.mat
+%               ClusterSummary + ClusterMembership (RawPeriod_h per candidate)
+%
+%   Per mouse: mean + median of candidate RawPeriod_h within each locked cluster.
+%   Cohort: mean + median across mice (of those per-mouse summaries).
 %
 %   Outputs under {cohortRoot}/Script11_DominantPeriod_{Publication|Development}/
 %     Tables/DominantPeriod_ClusterSummary.csv
 %     Tables/DominantPeriod_PerMouse.csv
-%     Tables/DominantPeriod_Output.xlsx  (ClusterSummary + PerMouse sheets)
-%     Figures/Supp_DominantPeriod_RidgePeriod_3Cluster.{jpeg|png}
+%     Tables/DominantPeriod_Output.xlsx
+%     Figures/Supp_DominantPeriod_ClusterPeriod_3Cluster.{jpeg|png}
 
     SCRIPT_NAME = 'extended_script11_dominant_period_run';
-    SCRIPT_VERSION = '1.0';
+    SCRIPT_VERSION = '1.1';
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -42,14 +45,14 @@ function out = extended_script11_dominant_period_run(cohortRoot, cfg)
     LOG = fopen(logPath, 'w');
     cleanupLog = onCleanup(@() script11_fclose_(LOG)); %#ok<NASGU>
 
-    fprintf('\n=== Extended Script 11: Dominant UR periods ===\n');
+    fprintf('\n=== Extended Script 11: Dominant UR periods (ClusterMembership) ===\n');
     fprintf('Cohort:  %s\n', paths.cohortRoot);
     fprintf('Output:  %s\n', outDirs.root);
     fprintf('Mode:    %s | dpi=%g | ext=%s\n', cfg.plotMode, theme.dpi, theme.ext);
     script11_log_(LOG, '%s v%s started', SCRIPT_NAME, SCRIPT_VERSION);
     script11_log_(LOG, 'Cohort: %s', paths.cohortRoot);
     script11_log_(LOG, 'profilesXlsx: %s', paths.profilesXlsx);
-    script11_log_(LOG, 'AcrossPhotoperiod_Input: %s', paths.extendedHandoff);
+    script11_log_(LOG, 'Period source: Script 7 ClusterMembership.RawPeriod_h (no WP_TS)');
 
     clusterSummary = script11_read_sheet_(paths.profilesXlsx, 'ClusterSummary');
     clusterMembership = script11_read_sheet_(paths.profilesXlsx, 'ClusterMembership');
@@ -58,21 +61,19 @@ function out = extended_script11_dominant_period_run(cohortRoot, cfg)
             'ClusterSummary or ClusterMembership missing in %s', paths.profilesXlsx);
     end
 
-    ridgeLong = script11_load_ridgephase_long_(paths.extendedHandoff, LOG);
-    ridgeLong = script11_join_clusters_(ridgeLong, clusterMembership);
-
+    candTable = script11_prepare_membership_(clusterMembership, LOG);
     panelSpec = cfg.script11.panels;
     resolved = script11_resolve_panels_(clusterSummary, panelSpec, LOG);
 
     p0Ref = script11_resolve_p0_(paths.handoffRoot, cfg.script11.defaultP0_h, LOG);
 
-    [clusterTable, mouseTable] = script11_compute_tables_(ridgeLong, resolved, clusterSummary, p0Ref, cfg, LOG);
+    [clusterTable, mouseTable] = script11_compute_tables_(candTable, resolved, clusterSummary, p0Ref, cfg, LOG);
 
     settingsTable = script11_make_settings_table_(SCRIPT_NAME, SCRIPT_VERSION, paths, p0Ref, cfg);
     tablePaths = script11_write_tables_(outDirs.tables, settingsTable, clusterTable, mouseTable, LOG);
 
-    figPath = fullfile(outDirs.figures, ['Supp_DominantPeriod_RidgePeriod_3Cluster' theme.ext]);
-    script11_plot_violin_panels_(figPath, ridgeLong, resolved, theme, pal, LOG);
+    figPath = fullfile(outDirs.figures, ['Supp_DominantPeriod_ClusterPeriod_3Cluster' theme.ext]);
+    script11_plot_violin_panels_(figPath, mouseTable, candTable, resolved, theme, pal, LOG);
     script11_log_(LOG, 'Wrote figure %s', figPath);
 
     out = struct();
@@ -96,10 +97,12 @@ end
 %% Table export
 function settingsTable = script11_make_settings_table_(scriptName, scriptVersion, paths, p0Ref, cfg)
     names = ["ScriptName"; "ScriptVersion"; "RunTimestamp"; "CohortRoot"; ...
-        "ProfilesXlsx"; "AcrossPhotoperiodInput"; "PlotMode"; "P0_Reference_h"];
+        "ProfilesXlsx"; "PlotMode"; "P0_Reference_h"; "PeriodSource"; "Claim"];
     vals = [string(scriptName); string(scriptVersion); string(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss')); ...
-        string(paths.cohortRoot); string(paths.profilesXlsx); string(paths.extendedHandoff); ...
-        string(cfg.plotMode); string(p0Ref)];
+        string(paths.cohortRoot); string(paths.profilesXlsx); ...
+        string(cfg.plotMode); string(p0Ref); ...
+        "Script7 ClusterMembership.RawPeriod_h (candidate-level; no WP_TS)"; ...
+        "Per-mouse mean+median of candidate periods within locked clusters; cohort mean+median across mice"];
     settingsTable = table(names, vals, 'VariableNames', {'Setting', 'Value'});
 end
 
@@ -169,13 +172,9 @@ function script11_assert_inputs_(paths)
     if ~isfile(paths.profilesXlsx)
         missing(end + 1, 1) = "Script7 profiles xlsx"; %#ok<AGROW>
     end
-    tsHits = dir(fullfile(paths.extendedHandoff, 'WP_TS__*.mat'));
-    if isempty(tsHits)
-        missing(end + 1, 1) = "Script4 WP_TS__*.mat"; %#ok<AGROW>
-    end
     if ~isempty(missing)
         error('extended_script11_dominant_period_run:MissingInputs', ...
-            'Missing: %s. Run Scripts 4 and 7 first.', strjoin(missing, ', '));
+            'Missing: %s. Run Script 7 first.', strjoin(missing, ', '));
     end
 end
 
@@ -215,7 +214,7 @@ function theme = script11_theme_(cfg, pal)
     theme.violinWidth = 0.38;
 end
 
-%% Data load
+%% Data load / membership
 function T = script11_read_sheet_(xlsxPath, sheetName)
     T = table();
     if ~isfile(xlsxPath)
@@ -229,47 +228,33 @@ function T = script11_read_sheet_(xlsxPath, sheetName)
     end
 end
 
-function ridgeLong = script11_load_ridgephase_long_(acrossFolder, LOG)
-    tsFiles = dir(fullfile(acrossFolder, 'WP_TS__*.mat'));
-    if isempty(tsFiles)
-        error('extended_script11_dominant_period_run:NoWP_TS', ...
-            'No WP_TS__*.mat in %s', acrossFolder);
+function cand = script11_prepare_membership_(clusterMembership, LOG)
+    needed = {'CandidateID','SignalID','ClusterID','BandName','RawPeriod_h'};
+    if ~all(ismember(needed, clusterMembership.Properties.VariableNames))
+        error('extended_script11_dominant_period_run:BadMembership', ...
+            'ClusterMembership missing required columns: %s', strjoin(needed, ', '));
     end
-
-    ridgeLong = table();
-    for i = 1:numel(tsFiles)
-        fpath = fullfile(tsFiles(i).folder, tsFiles(i).name);
-        S = load(fpath);
-        T = script11_extract_ridgephase_table_(S, fpath);
-        T = script11_standardise_ridgephase_table_(T);
-        T = T(string(T.Source) == "Raw", :);
-        T = T(string(T.Phase) == "All", :);
-        T = T(logical(T.ValidFlag), :);
-        T = T(isfinite(T.RidgePeriod_h) & T.RidgePeriod_h > 0, :);
-        if isempty(ridgeLong)
-            ridgeLong = T;
-        else
-            ridgeLong = [ridgeLong; T]; %#ok<AGROW>
-        end
-        script11_log_(LOG, 'Loaded %s (%d ridge rows)', tsFiles(i).name, height(T));
+    cand = clusterMembership;
+    cand.CandidateID = string(cand.CandidateID);
+    cand.SignalID = string(cand.SignalID);
+    cand.ClusterID = string(cand.ClusterID);
+    cand.BandName = string(cand.BandName);
+    cand.RawPeriod_h = double(cand.RawPeriod_h);
+    if ismember('ClusterRank', cand.Properties.VariableNames)
+        cand.ClusterRank = double(cand.ClusterRank);
     end
-
-    if height(ridgeLong) == 0
-        error('extended_script11_dominant_period_run:EmptyRidge', ...
-            'No usable RidgePhase rows after filtering.');
+    if ismember('Photoperiod_h', cand.Properties.VariableNames)
+        cand.Photoperiod_h = double(cand.Photoperiod_h);
     end
-end
-
-function ridgeLong = script11_join_clusters_(ridgeLong, clusterMembership)
-    cm = clusterMembership;
-    cm.CandidateID = string(cm.CandidateID);
-    cm.ClusterID = string(cm.ClusterID);
-    cm.BandName = string(cm.BandName);
-    keepCols = intersect({'CandidateID','ClusterID','ClusterRank','PeriodLow_h','PeriodHigh_h', ...
-        'FilterLow_h','FilterHigh_h','PeriodCentre_h'}, cm.Properties.VariableNames, 'stable');
-    cm = cm(:, keepCols);
-    ridgeLong.CandidateID = string(ridgeLong.CandidateID);
-    ridgeLong = innerjoin(ridgeLong, cm, 'Keys', 'CandidateID');
+    keep = isfinite(cand.RawPeriod_h) & cand.RawPeriod_h > 0 & ...
+        strlength(cand.SignalID) > 0 & strlength(cand.ClusterID) > 0;
+    cand = cand(keep, :);
+    if height(cand) == 0
+        error('extended_script11_dominant_period_run:EmptyMembership', ...
+            'No usable ClusterMembership rows with finite RawPeriod_h.');
+    end
+    script11_log_(LOG, 'ClusterMembership candidates: %d (mice=%d, clusters=%d)', ...
+        height(cand), numel(unique(cand.SignalID)), numel(unique(cand.ClusterID)));
 end
 
 function resolved = script11_resolve_panels_(clusterSummary, panelSpec, LOG)
@@ -382,7 +367,7 @@ function vals = script11_collect_anchor_periods_(S)
 end
 
 %% Statistics
-function [clusterTable, mouseTable] = script11_compute_tables_(ridgeLong, resolved, clusterSummary, p0Ref, cfg, LOG)
+function [clusterTable, mouseTable] = script11_compute_tables_(candTable, resolved, clusterSummary, p0Ref, cfg, LOG)
     mouseRows = {};
     clusterRows = {};
 
@@ -391,34 +376,42 @@ function [clusterTable, mouseTable] = script11_compute_tables_(ridgeLong, resolv
 
     for i = 1:numel(resolved)
         R = resolved(i);
-        sub = ridgeLong(string(ridgeLong.ClusterID) == string(R.ClusterID), :);
+        sub = candTable(string(candTable.ClusterID) == string(R.ClusterID), :);
         if height(sub) == 0
-            error('extended_script11_dominant_period_run:NoRidgeRows', ...
-                'No ridge rows for cluster %s', char(R.ClusterID));
+            error('extended_script11_dominant_period_run:NoCandidates', ...
+                'No ClusterMembership candidates for cluster %s', char(R.ClusterID));
         end
 
         mice = unique(string(sub.SignalID));
         mice = mice(strlength(mice) > 0);
         perMouseMedian = NaN(numel(mice), 1);
+        perMouseMean = NaN(numel(mice), 1);
         perMouseIQR = NaN(numel(mice), 1);
-        perMouseN = zeros(numel(mice), 1);
+        perMouseSD = NaN(numel(mice), 1);
         perMouseCand = zeros(numel(mice), 1);
 
         for m = 1:numel(mice)
             ms = sub(string(sub.SignalID) == mice(m), :);
-            y = ms.RidgePeriod_h;
-            y = y(isfinite(y));
+            y = double(ms.RawPeriod_h);
+            y = y(isfinite(y) & y > 0);
             perMouseMedian(m) = median(y, 'omitnan');
+            perMouseMean(m) = mean(y, 'omitnan');
             perMouseIQR(m) = script11_iqr_(y);
-            perMouseN(m) = numel(y);
-            perMouseCand(m) = numel(unique(string(ms.CandidateID)));
+            if numel(y) > 1
+                perMouseSD(m) = std(y);
+            else
+                perMouseSD(m) = 0;
+            end
+            perMouseCand(m) = numel(y);
             mouseRows(end + 1, :) = {string(R.ClusterID), string(R.BandName), double(R.ClusterRank), ...
-                logical(R.MainText), string(mice(m)), perMouseMedian(m), perMouseIQR(m), ...
-                double(perMouseN(m)), double(perMouseCand(m))}; %#ok<AGROW>
+                logical(R.MainText), string(mice(m)), perMouseMedian(m), perMouseMean(m), ...
+                perMouseIQR(m), perMouseSD(m), double(perMouseCand(m))}; %#ok<AGROW>
         end
 
         medCohort = median(perMouseMedian, 'omitnan');
+        meanCohort = mean(perMouseMean, 'omitnan');
         iqrMice = script11_iqr_(perMouseMedian);
+        sdMice = std(perMouseMedian, 'omitnan');
         medWithin = median(perMouseIQR, 'omitnan');
         [nearHarm, deltaHarm, kNear] = script11_nearest_harmonic_(medCohort, p0Ref, cfg.script11.harmonicKMax);
 
@@ -436,21 +429,21 @@ function [clusterTable, mouseTable] = script11_compute_tables_(ridgeLong, resolv
 
         clusterRows(end + 1, :) = {string(R.ClusterID), string(R.BandName), double(R.ClusterRank), ...
             logical(R.MainText), double(R.PeriodLow_h), double(R.PeriodHigh_h), ...
-            double(R.PeriodCentre_h), medCohort, iqrMice, medWithin, ...
+            double(R.PeriodCentre_h), medCohort, meanCohort, iqrMice, sdMice, medWithin, ...
             double(numel(mice)), double(height(unique(string(sub.CandidateID)))), ...
-            double(sum(perMouseN)), script7Median, script7IQR, ...
+            double(sum(perMouseCand)), script7Median, script7IQR, ...
             p0Ref, kNear, nearHarm, deltaHarm}; %#ok<AGROW>
 
-        script11_log_(LOG, '%s: median=%.3f h, IQR mice=%.3f, n=%d mice', ...
-            char(R.ClusterID), medCohort, iqrMice, numel(mice));
+        script11_log_(LOG, '%s: median=%.3f h, mean=%.3f h, IQR mice=%.3f, n=%d mice', ...
+            char(R.ClusterID), medCohort, meanCohort, iqrMice, numel(mice));
     end
 
     mouseHdr = {'ClusterID','BandName','ClusterRank','IncludeInMainText','SignalID', ...
-        'MedianRidgePeriod_h','IQR_RidgePeriod_h','N_RidgeTimePoints','N_Candidates'};
+        'MedianPeriod_h','MeanPeriod_h','IQR_Period_h','SD_Period_h','N_Candidates'};
     clusterHdr = {'ClusterID','BandName','ClusterRank','IncludeInMainText', ...
         'PeriodLow_h','PeriodHigh_h','PeriodCentre_h', ...
-        'MedianTau_Cohort_h','IQR_AcrossMice_h','MedianWithinMouseIQR_h', ...
-        'N_Mice','N_Candidates','N_RidgeTimePoints', ...
+        'MedianTau_Cohort_h','MeanTau_Cohort_h','IQR_AcrossMice_h','SD_AcrossMice_h', ...
+        'MedianWithinMouseIQR_h','N_Mice','N_Candidates','N_CandidatePeriodValues', ...
         'Script7_MedianRawPeriod_h','Script7_IQRRawPeriod_h', ...
         'P0_Reference_h','NearestHarmonic_k','NearestHarmonic_h','DeltaFromHarmonic_h'};
 
@@ -472,40 +465,47 @@ function [nearH, deltaH, kNear] = script11_nearest_harmonic_(period_h, p0, kMax)
     kNear = ks(idx);
 end
 
-%% Plotting
-function script11_plot_violin_panels_(outPath, ridgeLong, resolved, theme, pal, LOG)
+%% Plotting — per-mouse candidate-period violins (mean + median lines)
+function script11_plot_violin_panels_(outPath, mouseTable, candTable, resolved, theme, pal, LOG)
     nPanels = numel(resolved);
-    fig = figure('Color', 'w', 'Position', [80 80 300 * nPanels + 120 560]);
+    fig = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 300 * nPanels + 120 560]);
     t = tiledlayout(fig, 1, nPanels, 'TileSpacing', 'compact', 'Padding', 'compact');
 
     for i = 1:nPanels
         R = resolved(i);
         ax = nexttile(t, i);
-        hold(ax, 'on');
+        hold(ax, 'on'); set(ax, 'Color', 'w');
 
-        sub = ridgeLong(string(ridgeLong.ClusterID) == string(R.ClusterID), :);
-        mice = unique(string(sub.SignalID));
-        mice = mice(strlength(mice) > 0);
-
-        bandColor = script11_band_color_(pal, R.BandName);
-        medians = NaN(numel(mice), 1);
-        for m = 1:numel(mice)
-            y = sub.RidgePeriod_h(string(sub.SignalID) == mice(m));
-            y = y(isfinite(y));
-            if ~isempty(y)
-                medians(m) = median(y, 'omitnan');
-            end
+        subCand = candTable(string(candTable.ClusterID) == string(R.ClusterID), :);
+        subMouse = mouseTable(string(mouseTable.ClusterID) == string(R.ClusterID), :);
+        if isempty(subMouse)
+            title(ax, sprintf('%s C%02d — no mice', char(R.BandName), R.ClusterRank), ...
+                'Interpreter', 'none');
+            continue;
         end
 
-        [~, sortIdx] = sort(medians, 'ascend', 'MissingPlacement', 'last');
-        mice = mice(sortIdx);
-        medians = medians(sortIdx);
+        [~, sortIdx] = sort(double(subMouse.MedianPeriod_h), 'ascend', 'MissingPlacement', 'last');
+        subMouse = subMouse(sortIdx, :);
+        mice = string(subMouse.SignalID);
+        bandColor = script11_band_color_(pal, R.BandName);
 
         for m = 1:numel(mice)
-            y = sub.RidgePeriod_h(string(sub.SignalID) == mice(m));
-            y = y(isfinite(y));
+            y = double(subCand.RawPeriod_h(string(subCand.SignalID) == mice(m)));
+            y = y(isfinite(y) & y > 0);
             if isempty(y), continue; end
             script11_draw_violin_(ax, m, y, bandColor, theme);
+        end
+
+        % Cohort median / mean of per-mouse summaries (horizontal guides)
+        medCohort = median(double(subMouse.MedianPeriod_h), 'omitnan');
+        meanCohort = mean(double(subMouse.MeanPeriod_h), 'omitnan');
+        if isfinite(medCohort)
+            yline(ax, medCohort, ':', 'Color', theme.medianColor, ...
+                'LineWidth', theme.medianLineWidth, 'HandleVisibility', 'off');
+        end
+        if isfinite(meanCohort)
+            yline(ax, meanCohort, '-', 'Color', theme.meanColor, ...
+                'LineWidth', theme.meanLineWidth, 'HandleVisibility', 'off');
         end
 
         ax.XLim = [0.4, max(numel(mice), 1) + 0.6];
@@ -520,18 +520,15 @@ function script11_plot_violin_panels_(outPath, ridgeLong, resolved, theme, pal, 
             yLo = R.PeriodLow_h;
             yHi = R.PeriodHigh_h;
         end
-        pad = 0.08 * (yHi - yLo);
+        pad = 0.08 * max(yHi - yLo, 0.1);
         ylim(ax, [yLo - pad, yHi + pad]);
-        ylabel(ax, 'Ridge period (h)', 'FontName', theme.fontName, 'FontSize', theme.labelSize, 'FontWeight', 'bold');
-        rankTag = sprintf('C%02d', R.ClusterRank);
-        title(ax, sprintf('%s %s (%.2f–%.2f h)', char(R.BandName), rankTag, R.PeriodLow_h, R.PeriodHigh_h), ...
-            'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', 'Interpreter', 'none');
+        ylabel(ax, 'Candidate period (h)', 'FontName', theme.fontName, ...
+            'FontSize', theme.labelSize, 'FontWeight', 'bold');
+        title(ax, sprintf('%s C%02d (%.2f–%.2f h)', char(R.BandName), R.ClusterRank, ...
+            R.PeriodLow_h, R.PeriodHigh_h), ...
+            'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
+            'Interpreter', 'none');
         script11_style_axes_(ax, theme);
-
-        nPts = sum(isfinite(sub.RidgePeriod_h));
-        text(ax, 0.02, 0.98, sprintf('n=%d mice, %d ridge points', numel(mice), nPts), ...
-            'Units', 'normalized', 'VerticalAlignment', 'top', 'FontName', theme.fontName, ...
-            'FontSize', theme.fontSize - 1, 'Color', [0.2 0.2 0.2]);
     end
 
     exportgraphics(fig, outPath, 'Resolution', theme.dpi);
@@ -544,12 +541,13 @@ function script11_draw_violin_(ax, xCenter, y, faceColor, theme)
     y = y(isfinite(y));
     if numel(y) < 2
         if numel(y) == 1
-            plot(ax, xCenter, y, 'o', 'Color', faceColor, 'MarkerFaceColor', faceColor, 'MarkerSize', 5);
+            plot(ax, xCenter, y, 'o', 'Color', faceColor, 'MarkerFaceColor', faceColor, ...
+                'MarkerSize', 5, 'HandleVisibility', 'off');
         end
         return;
     end
 
-    nBins = max(12, min(30, round(sqrt(numel(y)))));
+    nBins = max(8, min(24, round(sqrt(numel(y)))));
     yMin = min(y);
     yMax = max(y);
     if yMax <= yMin
@@ -565,16 +563,17 @@ function script11_draw_violin_(ax, xCenter, y, faceColor, theme)
     halfW = theme.violinWidth * (counts / maxC);
     xx = [xCenter - halfW, fliplr(xCenter + halfW * 0.05)];
     yy = [centers, fliplr(centers)];
-    patch(ax, xx, yy, faceColor, 'FaceAlpha', theme.violinAlpha, 'EdgeColor', faceColor * 0.65, 'LineWidth', 0.6);
+    patch(ax, xx, yy, faceColor, 'FaceAlpha', theme.violinAlpha, ...
+        'EdgeColor', faceColor * 0.65, 'LineWidth', 0.6, 'HandleVisibility', 'off');
 
     medY = median(y, 'omitnan');
     meanY = mean(y, 'omitnan');
     w = theme.violinWidth;
     xLine = [xCenter - w, xCenter + w];
     plot(ax, xLine, [medY, medY], ':', 'Color', theme.medianColor, ...
-        'LineWidth', theme.medianLineWidth);
+        'LineWidth', theme.medianLineWidth, 'HandleVisibility', 'off');
     plot(ax, xLine, [meanY, meanY], '-', 'Color', theme.meanColor, ...
-        'LineWidth', theme.meanLineWidth);
+        'LineWidth', theme.meanLineWidth, 'HandleVisibility', 'off');
 end
 
 function c = script11_band_color_(pal, bandName)
@@ -584,49 +583,6 @@ function c = script11_band_color_(pal, bandName)
     else
         c = pal.base(1, :);
     end
-end
-
-%% RidgePhase helpers (Script 7 compatible)
-function T = script11_extract_ridgephase_table_(S, sourceFile)
-    T = table();
-    if isfield(S, 'pkgTS') && isstruct(S.pkgTS)
-        pkgTS = S.pkgTS;
-        if isfield(pkgTS, 'tables') && isstruct(pkgTS.tables) && isfield(pkgTS.tables, 'RidgePhase_Long')
-            T = pkgTS.tables.RidgePhase_Long;
-        end
-    end
-    if isempty(T)
-        fns = fieldnames(S);
-        for i = 1:numel(fns)
-            obj = S.(fns{i});
-            if istable(obj) && all(ismember({'CandidateID','RidgePhase_rad','RidgePower_log10'}, obj.Properties.VariableNames))
-                T = obj;
-                break;
-            end
-        end
-    end
-    if isempty(T) || ~istable(T)
-        error('No RidgePhase_Long table found in %s', sourceFile);
-    end
-end
-
-function T = script11_standardise_ridgephase_table_(T)
-    required = {'File','SignalID','Source','Photoperiod_h','BandName','CandidateID', ...
-        'Time_days','ZT_hours','Phase','RidgePeriod_h','RidgePower_log10','RidgePhase_rad','ValidFlag'};
-    for i = 1:numel(required)
-        if ~ismember(required{i}, T.Properties.VariableNames)
-            error('RidgePhase_Long is missing required column: %s', required{i});
-        end
-    end
-    strVars = {'File','SignalID','Source','BandName','CandidateID','Phase'};
-    for i = 1:numel(strVars)
-        T.(strVars{i}) = string(T.(strVars{i}));
-    end
-    numVars = {'Photoperiod_h','Time_days','ZT_hours','RidgePeriod_h','RidgePower_log10','RidgePhase_rad'};
-    for i = 1:numel(numVars)
-        T.(numVars{i}) = double(T.(numVars{i}));
-    end
-    T.ValidFlag = logical(T.ValidFlag);
 end
 
 %% Utilities

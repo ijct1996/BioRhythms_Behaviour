@@ -1,8 +1,8 @@
 function run_extended_script11_dominant_periods(cohortRoot)
 %RUN_EXTENDED_SCRIPT11_DOMINANT_PERIODS Extended Script 11 — dominant UR period summary + supp violins.
 %
-%   Read-only post-hoc: requires Script 4 (WP_TS) + Script 7 (cluster tables).
-%   Produces manuscript median-period tables and a 3-panel supplemental figure
+%   Read-only post-hoc: Script 7 ClusterMembership.RawPeriod_h only (no WP_TS).
+%   Per-mouse / cohort mean + median periods; 3-panel supplemental figure
 %   (UR_1_3 C01 | UR_3_6 C01 | UR_3_6 C02).
 %
 %   run_extended_script11_dominant_periods()
