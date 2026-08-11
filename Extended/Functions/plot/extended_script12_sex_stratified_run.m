@@ -11,7 +11,7 @@ function out = extended_script12_sex_stratified_run(cohortRoot, cfg)
 %   No phase coherence / ridge-power panels. Inputs: Script 7 profiles only.
 
     SCRIPT_NAME = 'extended_script12_sex_stratified_run';
-    SCRIPT_VERSION = '1.4';
+    SCRIPT_VERSION = '1.5';
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -803,10 +803,7 @@ function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, 
     end
     yDataMax = max(topY, [], 'omitnan');
     if ~isfinite(yDataMax), yDataMax = 1; end
-    yDataMin = min(double(B.Value), [], 'omitnan');
-    if ~isfinite(yDataMin), yDataMin = 0; end
-    span = max(yDataMax - yDataMin, eps);
-    pad = 0.06 * span;
+    pad = 0.06 * max(yDataMax, eps);
     starCeil = yDataMax;
     for fi = 1:numel(facets)
         if isempty(St), continue; end
@@ -827,10 +824,11 @@ function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, 
             'HandleVisibility', 'off');
         starCeil = max(starCeil, yStar + 1.5 * pad);
     end
-    if isfinite(starCeil) && starCeil > yDataMax
-        yl = ylim(ax);
-        ylim(ax, [yl(1), max(yl(2), starCeil)]);
+    yTop = max([yDataMax + pad, starCeil], [], 'omitnan');
+    if ~isfinite(yTop) || yTop <= 0
+        yTop = 1;
     end
+    ylim(ax, [0, yTop]);
 
     set(ax, 'XTick', xTick, 'XTickLabel', arrayfun(@(x) char(script12_pp_label_(x)), facets, 'UniformOutput', false));
     xlabel(ax, 'Photoperiod', 'FontWeight', 'bold', 'FontName', theme.fontName);
