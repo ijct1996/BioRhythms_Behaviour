@@ -1,5 +1,13 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Script 11 dominant UR period summary
+
+### Added
+- **Extended Script 11** — read-only dominant validated UR period tables + supplemental 3-panel ridge-period violins (UR_1_3 C01 | UR_3_6 C01 | UR_3_6 C02)
+- Entry: `run_extended_script11_dominant_periods(cohortRoot)`; outputs `Script11_DominantPeriod_{Publication|Development}/`
+- `DominantPeriod_ClusterSummary.csv` / `DominantPeriod_Output.xlsx` — cohort median τ, IQR across mice, within-mouse IQR, harmonic distance vs P₀ reference
+- Paul Tol Bright band colours (`UR_1_3` cyan, `UR_3_6` purple); median (solid) + mean (dashed) overlays
+
 ## [Unreleased] — Script 10 manuscript amendments
 
 ### Changed

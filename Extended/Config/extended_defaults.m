@@ -1,5 +1,5 @@
 function cfg = extended_defaults()
-%EXTENDED_DEFAULTS Extended Scripts 4–7 defaults (development-first).
+%EXTENDED_DEFAULTS Extended Scripts 4–11 defaults (development-first).
 %
 %   cfg = extended_defaults()
 %
@@ -8,7 +8,7 @@ function cfg = extended_defaults()
 
     cfg.version = '1.0-dev';
     cfg.matlabTarget = 'R2025b';
-    cfg.phase = 'Scripts4-10';
+    cfg.phase = 'Scripts4-11';
 
     %% Plot mode — development until user requests publication pass
     cfg.plotMode = 'development';
@@ -20,7 +20,7 @@ function cfg = extended_defaults()
     cfg.samplingHours = 10 / 60;
     cfg.samplingMinutes = 10;
 
-    %% Script numbering (Extended 4–10)
+    %% Script numbering (Extended 4–11)
     cfg.scripts = struct();
     cfg.scripts(4).name = 'Ridge handoff + CarryForward validation';
     cfg.scripts(4).entry = 'run_extended_script4_ridge_validation';
@@ -36,6 +36,8 @@ function cfg = extended_defaults()
     cfg.scripts(9).entry = 'run_extended_script9_supplementary_figures';
     cfg.scripts(10).name = 'Manuscript figure assembler (locked Figs 1–7 + package)';
     cfg.scripts(10).entry = 'run_extended_script10_manuscript_figures';
+    cfg.scripts(11).name = 'Dominant UR period summary + supplemental violins (Script 7 clusters)';
+    cfg.scripts(11).entry = 'run_extended_script11_dominant_periods';
     %% HSub / CarryForward (Script 4 gate)
     cfg.hsub.defaultResidual = 'SEL_P360';
     cfg.hsub.primaryMode = "SEL_P360";
@@ -92,6 +94,15 @@ function cfg = extended_defaults()
         'suppRanks', 2, ...
         'expectPeriodRanks', [1, 2], ...
         'expectPeriod_h', [3.0, 4.0; 4.25, 5.0]);  % rows ↔ expectPeriodRanks (warn only)
+
+    %% Script 11 — dominant period summary (read-only; after Script 7)
+    cfg.script11 = struct();
+    cfg.script11.panels = [ ...
+        struct('BandName', "UR_1_3", 'ClusterRank', 1, 'MainText', true); ...
+        struct('BandName', "UR_3_6", 'ClusterRank', 1, 'MainText', true); ...
+        struct('BandName', "UR_3_6", 'ClusterRank', 2, 'MainText', false)];
+    cfg.script11.defaultP0_h = 24.0;
+    cfg.script11.harmonicKMax = 12;
 
     %% Ridge handoff QC (Script 4)
     cfg.ridgeHandoff.minRidgeCoverage = 0.50;

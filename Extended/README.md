@@ -1,4 +1,4 @@
-# Extended UR — Scripts 4–10
+# Extended UR — Scripts 4–11
 
 Extended pipeline beside **frozen Core Scripts 1–3**. Reuses Core `Handoff/` outputs; adds ridge validation, transition resync, LME/FDR, phase/profile analyses, and manuscript figure assembly.
 
@@ -36,6 +36,9 @@ run_extended_script9_supplementary_figures
 
 % 10 — locked manuscript figures (Figs 1–7) + Package_Manuscript handoff zip folder
 run_extended_script10_manuscript_figures   % pick cohort root (e.g. C57_LP)
+
+% 11 — dominant UR period summary + supplemental violins (after Script 7)
+run_extended_script11_dominant_periods     % pick cohort root (e.g. C57_LP)
 ```
 
 ### One-liner paths (non-interactive)
@@ -52,6 +55,7 @@ run_extended_script7_phase_profiles(extIn)
 cfg = extended_defaults(); cfg.plotMode = 'development';
 cfg = extended_apply_plot_cfg(cfg);
 extended_script10_run(cohort, cfg);   % batch-safe (no questdlg)
+run_extended_script11_dominant_periods(cohort)
 ```
 
 ## Script map
@@ -65,6 +69,18 @@ extended_script10_run(cohort, cfg);   % batch-safe (no questdlg)
 | **8** | — | Cohort root | `Script8_PublicationFigures_*` composites |
 | **9** | — | Cohort root | `Script9_SupplementaryFigures_*` (sex, cluster grids) |
 | **10** | — | Cohort root | `Script10_ManuscriptFigures_*` locked Figs 1–7 + `Package_Manuscript/` |
+| **11** | — | Cohort root (Scripts 4+7 outputs) | `Script11_DominantPeriod_*` summary tables + 3-panel supp violins |
+
+## Script 11 dominant period outputs
+
+Read-only post-hoc after Script 7. Uses Script 7 cluster lock (UR_1_3 C01, UR_3_6 C01+C02) and Script 4 `WP_TS` ridge periods.
+
+| Output | Use |
+|--------|-----|
+| `Tables/DominantPeriod_ClusterSummary.csv` | Main-text median τ + IQR across mice (`IncludeInMainText == true` rows) |
+| `Tables/DominantPeriod_PerMouse.csv` | Per-mouse audit |
+| `Tables/DominantPeriod_Output.xlsx` | Same tables + Settings workbook |
+| `Figures/Supp_DominantPeriod_RidgePeriod_3Cluster.*` | Supplemental nonstationarity figure (Paul Tol band colours) |
 
 ## Script 10 locked main figures
 
