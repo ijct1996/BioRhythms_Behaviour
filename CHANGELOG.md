@@ -1,5 +1,18 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Script 11 violins only if n≥6 (v2.2)
+
+### Changed
+- Script 11: KDE violins only when n≥6; n≤5 shows points + mean/median ticks (no density for tiny n)
+- Removed soft-clip attenuation that made jagged/exaggerated tails; smooth KDE with bw capped to data span
+- y-limits still from observed periods only (KDE support does not inflate ylim)
+
+## [Unreleased] — Script 11 pointed violin tips restored
+
+### Changed
+- Violin KDE support again extends ~3× bandwidth past the data so tips taper (not flat-trimmed)
+- Mild bandwidth cap retained; n≥6 rule unchanged
+
 ## [Unreleased] — Script 11 violin bandwidth + N clarification
 
 ### Changed

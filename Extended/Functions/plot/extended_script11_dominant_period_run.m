@@ -1,5 +1,5 @@
 function out = extended_script11_dominant_period_run(cohortRoot, cfg)
-%EXTENDED_SCRIPT11_DOMINANT_PERIOD_RUN Dominant cluster period tables + supp violins.
+%EXTENDED_SCRIPT11_DOMINANT_PERIOD_RUN Dominant cluster period tables + supp boxplots.
 %
 %   Inputs (read-only; no WP_TS):
 %     Script 7  SelectedValidatedUR_*Profiles/Tables/*_Output.xlsx
@@ -8,6 +8,7 @@ function out = extended_script11_dominant_period_run(cohortRoot, cfg)
 %   Per mouse: mean + median of candidate RawPeriod_h within each locked cluster.
 %   Cohort: mean + median across mice (of those per-mouse summaries).
 %   Sex inferred from SignalID (same rules as Script 12); figures coloured F/M.
+%   Figures: KDE violins only when n≥6; n≤5 = points + mean/median ticks (no invented density).
 %
 %   Outputs under {cohortRoot}/Script11_DominantPeriod_{Publication|Development}/
 %     Tables/DominantPeriod_ClusterSummary.csv
@@ -16,11 +17,11 @@ function out = extended_script11_dominant_period_run(cohortRoot, cfg)
 %     Tables/DominantPeriod_ByMouse.csv    (Cluster, BandName, Median_h, Median_SD, Mean_h, Mean_SD, SignalID, Sex)
 %     Tables/DominantPeriod_Output.xlsx
 %     Figures/Supp_DominantPeriod_ClusterPeriod_{Band}_C{rank}.*   (stable mouse order; F/M coloured)
-%     Figures/Supp_DominantPeriod_PopulationByCluster.*            (pooled; one violin per cluster)
-%     Figures/Supp_DominantPeriod_PopulationByCluster_BySex.*      (F|M violins per cluster)
+%     Figures/Supp_DominantPeriod_PopulationByCluster.*            (pooled; one box per cluster)
+%     Figures/Supp_DominantPeriod_PopulationByCluster_BySex.*      (F|M boxes per cluster)
 
     SCRIPT_NAME = 'extended_script11_dominant_period_run';
-    SCRIPT_VERSION = '2.0';
+    SCRIPT_VERSION = '2.3';
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -234,8 +235,9 @@ function theme = script11_theme_(cfg, pal)
     theme.violinAlpha = 0.55;
     theme.violinWidth = 0.38;
     theme.violinNGrid = 401;               % KDE evaluation points
-    theme.violinBwPad = 1.25;              % extend support by this × bandwidth (capped)
-    theme.violinBwCapFrac = 0.30;          % bw ≤ this × data span (stops empty long tails)
+    theme.violinBwPad = 3.0;               % support ≈ this × bw so density → 0 (pointed tips)
+    theme.violinBwCapFrac = 0.50;          % mild bw cap vs span (smooth, not wild)
+    theme.violinMinN = 6;                  % violins only for n≥6; else points + ticks
     theme.showCandidatePoints = true;      % jitter raw periods on mouse violins
 end
 
@@ -836,9 +838,9 @@ function script11_add_sex_mean_median_legend_(ax, theme, pal)
 end
 
 function yExt = script11_draw_violin_(ax, xCenter, y, faceColor, theme)
-% KDE violin only when n≥3 and periods are not identical.
-% Bandwidth capped to data span so tails stay near observed points (no empty whiskers).
-% yExt is always the data [min; max] so axis limits are not inflated by KDE support.
+% Smooth KDE violin when n≥6 and periods are not identical; else points + mean/median ticks.
+% Support extends ~3× bandwidth past the data so tips taper to a point (not flat trim).
+% Bandwidth mildly capped vs span to limit empty whiskers; ylim may include short tips.
     yExt = [NaN; NaN];
     y = y(:);
     y = y(isfinite(y));
@@ -855,7 +857,11 @@ function yExt = script11_draw_violin_(ax, xCenter, y, faceColor, theme)
     spanRaw = yMax - yMin;
     yExt = [yMin; yMax];
 
-    drawPointsOnly = numel(y) < 3 || spanRaw < 1e-6;
+    minN = 6;
+    if isfield(theme, 'violinMinN') && isfinite(theme.violinMinN)
+        minN = max(3, round(double(theme.violinMinN)));
+    end
+    drawPointsOnly = numel(y) < minN || spanRaw < 1e-6;
     if drawPointsOnly
         rng(abs(round(1e3 * xCenter + sum(y))));
         if numel(y) == 1
@@ -881,21 +887,21 @@ function yExt = script11_draw_violin_(ax, xCenter, y, faceColor, theme)
         bw = NaN;
     end
     if ~isfinite(bw) || bw <= 0
-        bw = max(0.05 * spanRaw, 0.02);
+        bw = max(0.08 * spanRaw, 0.03);
     end
-    % Cap bandwidth to a fraction of the observed span (prevents empty long tails)
-    bwCapFrac = 0.30;
+    bwCapFrac = 0.50;
     if isfield(theme, 'violinBwCapFrac') && isfinite(theme.violinBwCapFrac)
         bwCapFrac = double(theme.violinBwCapFrac);
     end
-    bwCap = max(bwCapFrac * spanRaw, 0.03);
+    bwCap = max(bwCapFrac * spanRaw, 0.05);
     bw = min(bw, bwCap);
 
-    bwPad = 1.25;
+    bwPad = 3.0;
     if isfield(theme, 'violinBwPad') && isfinite(theme.violinBwPad)
         bwPad = double(theme.violinBwPad);
     end
-    margin = min(bwPad * bw, max(0.25 * spanRaw, 0.05));
+    % Enough margin that density ≈ 0 at the ends → pointed (non-flat) tips
+    margin = max(bwPad * bw, 0.20 * spanRaw);
     nGrid = max(201, round(double(theme.violinNGrid)));
     yGrid = linspace(yMin - margin, yMax + margin, nGrid);
 
@@ -915,9 +921,6 @@ function yExt = script11_draw_violin_(ax, xCenter, y, faceColor, theme)
     end
     f = max(double(f(:))', 0);
     yg = double(yg(:))';
-    % Soft-clip density outside the observed range so mass does not invent empty whiskers
-    outside = yg < yMin | yg > yMax;
-    f(outside) = f(outside) * 0.15;
     maxF = max(f);
     if ~isfinite(maxF) || maxF <= 0
         maxF = 1;
@@ -929,6 +932,8 @@ function yExt = script11_draw_violin_(ax, xCenter, y, faceColor, theme)
     yy = [yg, fliplr(yg)];
     patch(ax, xx, yy, faceColor, 'FaceAlpha', theme.violinAlpha, ...
         'EdgeColor', faceColor * 0.65, 'LineWidth', 0.6, 'HandleVisibility', 'off');
+    % Include short tips in extent so ylim does not clip pointed ends
+    yExt = [min(yg); max(yg)];
 
     if isfield(theme, 'showCandidatePoints') && theme.showCandidatePoints
         rng(abs(round(1e3 * xCenter + sum(y))));

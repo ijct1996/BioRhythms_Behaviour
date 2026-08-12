@@ -78,7 +78,7 @@ run_extended_script12_sex_stratified_profiles(cohort)
 
 ## Script 11 dominant period outputs
 
-Read-only after Script 7. Uses locked clusters (UR_1_3 C01, UR_3_6 C01+C02) and **`ClusterMembership.RawPeriod_h`** (no `WP_TS`). Per mouse: mean + median of candidate periods; cohort: mean + median across mice. Sex inferred from `SignalID` (same rules as Script 12) for colouring and descriptive F/M summaries — exploratory, not a confirmatory sex test.
+Read-only after Script 7. Uses locked clusters (UR_1_3 C01, UR_3_6 C01+C02) and **`ClusterMembership.RawPeriod_h`** (no `WP_TS`). Per mouse: mean + median of candidate periods; cohort: mean + median across mice. Sex inferred from `SignalID` (same rules as Script 12) for colouring and descriptive F/M summaries — exploratory, not a confirmatory sex test. **KDE violins only when n≥6**; smaller groups show jittered points + mean/median ticks.
 
 | Output | Use |
 |--------|-----|
@@ -87,9 +87,9 @@ Read-only after Script 7. Uses locked clusters (UR_1_3 C01, UR_3_6 C01+C02) and 
 | `Tables/DominantPeriod_ByCluster.csv` | Cluster, N (period mice), Median_h, Median_SD, Mean_h, Mean_SD, N_Candidates, N_Mice_Activity |
 | `Tables/DominantPeriod_ByMouse.csv` | Cluster, BandName, Median_h, Median_SD, Mean_h, Mean_SD, SignalID, Sex, N_Candidates |
 | `Tables/DominantPeriod_Output.xlsx` | Same tables + Settings |
-| `Figures/Supp_DominantPeriod_ClusterPeriod_{Band}_C{rank}.*` | Per cluster; stable SignalID order; F/M colours |
-| `Figures/Supp_DominantPeriod_PopulationByCluster.*` | Pooled population: one violin per cluster (no sex split) |
-| `Figures/Supp_DominantPeriod_PopulationByCluster_BySex.*` | F\|M violins of per-mouse median τ per cluster |
+| `Figures/Supp_DominantPeriod_ClusterPeriod_{Band}_C{rank}.*` | Per cluster; stable SignalID order; F/M colours; violins only if n≥6 |
+| `Figures/Supp_DominantPeriod_PopulationByCluster.*` | Pooled population: one violin per cluster when n≥6 (else points + ticks) |
+| `Figures/Supp_DominantPeriod_PopulationByCluster_BySex.*` | F\|M of per-mouse median τ; violins only if n≥6 per sex group |
 
 Script 11 is **standalone** — Script 10 does not copy these into `Package_Manuscript/`.
 
