@@ -1,17 +1,17 @@
 function out = extended_script12_sex_stratified_run(cohortRoot, cfg)
-%EXTENDED_SCRIPT12_SEX_STRATIFIED_RUN Sex-stratified activity grids + post-LD amplitude.
+%EXTENDED_SCRIPT12_SEX_STRATIFIED_RUN Sex-stratified activity grids + pre/post-LD amplitude.
 %
 %   For each locked cluster (UR_1_3 C01, UR_3_6 C01, UR_3_6 C02):
 %     - Activity: Female | Male side-by-side L12–L22 (2×3 each)
-%     - Amplitude: F/M overlaid vs photoperiod — first local max after lights-off
-%       minus pre-off baseline (search window ≈ 1× cluster period, capped)
-%     - F vs M Mann–Whitney U per photoperiod; BH-FDR within ClusterID;
+%     - Amplitude: F/M overlaid vs photoperiod — pre-LD and post-LD first local max
+%       minus baseline (search window ≈ 1× cluster period, capped)
+%     - F vs M Mann–Whitney U per photoperiod; BH-FDR within ClusterID×Metric;
 %       stars from Q_BH (* / ** / ***)
 %
 %   No phase coherence / ridge-power panels. Inputs: Script 7 profiles only.
 
     SCRIPT_NAME = 'extended_script12_sex_stratified_run';
-    SCRIPT_VERSION = '1.5';
+    SCRIPT_VERSION = '1.7';
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -45,14 +45,14 @@ function out = extended_script12_sex_stratified_run(cohortRoot, cfg)
     LOG = fopen(logPath, 'w');
     cleanupLog = onCleanup(@() script12_fclose_(LOG)); %#ok<NASGU>
 
-    fprintf('\n=== Extended Script 12: Sex-stratified activity + post-LD amplitude ===\n');
+    fprintf('\n=== Extended Script 12: Sex-stratified activity + pre/post-LD amplitude ===\n');
     fprintf('Cohort:  %s\n', paths.cohortRoot);
     fprintf('Output:  %s\n', outDirs.root);
     fprintf('Mode:    %s | dpi=%g | ext=%s\n', cfg.plotMode, theme.dpi, theme.ext);
     script12_log_(LOG, '%s v%s started', SCRIPT_NAME, SCRIPT_VERSION);
     script12_log_(LOG, 'Cohort: %s', paths.cohortRoot);
     script12_log_(LOG, 'profilesXlsx: %s', paths.profilesXlsx);
-    script12_log_(LOG, 'Metric: first local max post-LD − pre-off baseline; no coherence / ridge panels');
+    script12_log_(LOG, 'Metrics: PreLD + PostLD first-peak − baseline; F vs M only; BH-FDR within ClusterID×Metric');
 
     data = script12_load_data_(paths, cfg, LOG);
     panels = cfg.script12.panels;
@@ -96,19 +96,26 @@ function out = extended_script12_sex_stratified_run(cohortRoot, cfg)
             script12_log_(LOG, 'Activity %s FAILED: %s', short, ME.message);
         end
 
-        try
-            figL = script12_make_amplitude_fig_(ampTable, statsTable, R, facets, theme, pal, face);
-            stemL = sprintf('Sex_Amplitude_PostLD_%s', short);
-            outL = script12_export_fig_(figL, fullfile(outDirs.figures, stemL), theme);
-            close(figL);
-            if strlength(outL) > 0
-                nOk = nOk + 1;
-                plotFiles = [plotFiles; {string(R.ClusterID), "Amplitude_PostLD_FirstPeak", "F/M overlaid + BH-FDR stars", string(outL)}]; %#ok<AGROW>
-                script12_log_(LOG, 'Amplitude %s: %s', short, outL);
+        ampSpecs = [ ...
+            struct('Metric', "PostLD_FirstPeak_au", 'Stem', "PostLD", 'PlotType', "Amplitude_PostLD_FirstPeak"); ...
+            struct('Metric', "PreLD_FirstPeak_au", 'Stem', "PreLD", 'PlotType', "Amplitude_PreLD_FirstPeak")];
+        for ai = 1:numel(ampSpecs)
+            spec = ampSpecs(ai);
+            try
+                figL = script12_make_amplitude_fig_(ampTable, statsTable, R, facets, theme, pal, face, spec.Metric);
+                stemL = sprintf('Sex_Amplitude_%s_%s', spec.Stem, short);
+                outL = script12_export_fig_(figL, fullfile(outDirs.figures, stemL), theme);
+                close(figL);
+                if strlength(outL) > 0
+                    nOk = nOk + 1;
+                    plotFiles = [plotFiles; {string(R.ClusterID), string(spec.PlotType), ...
+                        "F/M overlaid + BH-FDR stars", string(outL)}]; %#ok<AGROW>
+                    script12_log_(LOG, 'Amplitude %s %s: %s', spec.Stem, short, outL);
+                end
+            catch ME
+                warning('Script12:Amp', 'Amplitude %s %s failed: %s', spec.Stem, short, ME.message);
+                script12_log_(LOG, 'Amplitude %s %s FAILED: %s', spec.Stem, short, ME.message);
             end
-        catch ME
-            warning('Script12:Amp', 'Amplitude %s failed: %s', short, ME.message);
-            script12_log_(LOG, 'Amplitude %s FAILED: %s', short, ME.message);
         end
     end
 
@@ -373,7 +380,7 @@ function n = script12_n_mice_in_(T, clusterID, sex)
     n = numel(unique(string(B.SignalID)));
 end
 
-%% Amplitude metrics — first local max after lights-off
+%% Amplitude metrics — pre-LD and post-LD first local max
 function amp = script12_compute_amplitudes_(data, resolved, facets, cfg, LOG)
     rows = {};
     preH = double(cfg.script12.ampBaselinePreH);
@@ -382,7 +389,9 @@ function amp = script12_compute_amplitudes_(data, resolved, facets, cfg, LOG)
     floorH = double(cfg.script12.searchWindowFloorH);
     promMin = double(cfg.script12.peakProminenceMin);
     facets = double(facets(:))';
-    metric = "PostLD_FirstPeak_au";
+    metricSpecs = [ ...
+        struct('Metric', "PostLD_FirstPeak_au", 'Fn', @script12_first_peak_postld_); ...
+        struct('Metric', "PreLD_FirstPeak_au", 'Fn', @script12_first_peak_preld_)];
 
     Act = data.activityZT;
     neededA = {'ClusterID','Photoperiod_h','SignalID','Sex','ZTBinCenter_h','Activity_zscored'};
@@ -420,13 +429,18 @@ function amp = script12_compute_amplitudes_(data, resolved, facets, cfg, LOG)
 
             ptp = max(y) - min(y);
             tOff = photo;  % lights-off at ZT = photoperiod hours for L12–L22
-            ampVal = NaN; peakZT = NaN; baseline = NaN; method = "Skipped";
-            if isfinite(tOff) && tOff > 0 && tOff < 24
-                [ampVal, peakZT, baseline, method] = script12_first_peak_postld_(zt, y, tOff, preH, W, promMin);
+            if ~(isfinite(tOff) && tOff > 0 && tOff < 24)
+                continue;
             end
 
-            rows(end + 1, :) = {cid, string(R.BandName), double(R.ClusterRank), ...
-                photo, sig, sx, metric, ampVal, peakZT, baseline, W, method, ptp}; %#ok<AGROW>
+            for mi = 1:numel(metricSpecs)
+                metric = metricSpecs(mi).Metric;
+                peakFn = metricSpecs(mi).Fn;
+                ampVal = NaN; peakZT = NaN; baseline = NaN; method = "Skipped";
+                [ampVal, peakZT, baseline, method] = peakFn(zt, y, tOff, preH, W, promMin);
+                rows(end + 1, :) = {cid, string(R.BandName), double(R.ClusterRank), ...
+                    photo, sig, sx, metric, ampVal, peakZT, baseline, W, method, ptp}; %#ok<AGROW>
+            end
         end
     end
 
@@ -438,10 +452,14 @@ function amp = script12_compute_amplitudes_(data, resolved, facets, cfg, LOG)
     amp = cell2table(rows, 'VariableNames', ...
         {'ClusterID','BandName','ClusterRank','Photoperiod_h','SignalID','Sex', ...
          'Metric','Value','PeakZT_h','Baseline_z','SearchWindow_h','PeakMethod','PeakToTrough_z'});
-    nFirst = sum(amp.PeakMethod == "FirstLocalMax");
-    nFall = sum(amp.PeakMethod == "WindowMaxFallback");
-    script12_log_(LOG, 'Amplitude rows: %d (FirstLocalMax=%d, WindowMaxFallback=%d, other=%d)', ...
-        height(amp), nFirst, nFall, height(amp) - nFirst - nFall);
+    for mi = 1:numel(metricSpecs)
+        m = metricSpecs(mi).Metric;
+        sub = amp(string(amp.Metric) == m, :);
+        nFirst = sum(sub.PeakMethod == "FirstLocalMax");
+        nFall = sum(sub.PeakMethod == "WindowMaxFallback");
+        script12_log_(LOG, '%s rows: %d (FirstLocalMax=%d, WindowMaxFallback=%d, other=%d)', ...
+            char(m), height(sub), nFirst, nFall, height(sub) - nFirst - nFall);
+    end
 end
 
 function W = script12_search_window_h_(R, frac, floorH, capH)
@@ -499,6 +517,51 @@ function [ampVal, peakZT, baseline, method] = script12_first_peak_postld_(zt, y,
     [ymax, ix] = max(yPost);
     ampVal = ymax - baseline;
     peakZT = ztPost(ix);
+    method = "WindowMaxFallback";
+end
+
+function [ampVal, peakZT, baseline, method] = script12_first_peak_preld_(zt, y, tOff, preH, W, promMin)
+% First local max in [tOff−W, tOff) minus mean in [tOff−W−pre, tOff−W). Fallback: window max.
+    ampVal = NaN; peakZT = NaN; baseline = NaN; method = "Skipped";
+    tLo = tOff - W;
+    preLo = tLo - preH;
+    pre = y(zt >= preLo & zt < tLo);
+    searchMask = zt >= tLo & zt < tOff;
+    ztPre = zt(searchMask);
+    yPre = y(searchMask);
+    if isempty(pre) || isempty(yPre)
+        return;
+    end
+    baseline = mean(pre);
+
+    peakIdx = [];
+    nP = numel(yPre);
+    for i = 1:nP
+        if nP == 1
+            isPeak = true;
+        elseif i == 1
+            isPeak = yPre(i) > yPre(i + 1);
+        elseif i == nP
+            isPeak = yPre(i) > yPre(i - 1);
+        else
+            isPeak = (yPre(i) >= yPre(i - 1)) && (yPre(i) > yPre(i + 1));
+        end
+        if isPeak && (yPre(i) - baseline) >= promMin
+            peakIdx = i;
+            break;
+        end
+    end
+
+    if ~isempty(peakIdx)
+        ampVal = yPre(peakIdx) - baseline;
+        peakZT = ztPre(peakIdx);
+        method = "FirstLocalMax";
+        return;
+    end
+
+    [ymax, ix] = max(yPre);
+    ampVal = ymax - baseline;
+    peakZT = ztPre(ix);
     method = "WindowMaxFallback";
 end
 
@@ -734,15 +797,19 @@ function d = script12_cliffs_delta_(x, y)
     d = (gt - lt) / n;
 end
 
-%% Amplitude figure — F/M overlaid + BH-FDR stars only (no other on-figure notes)
-function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, faceLabel)
+%% Amplitude figure — F/M boxplots side-by-side + BH-FDR stars above each photoperiod pair
+function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, faceLabel, metric)
+% F vs M box-and-whisker per photoperiod (side-by-side); BH-FDR stars above each pair.
     facets = double(facets(:))';
-    fig = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 900 520]);
+    fig = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 920 540]);
     ax = axes(fig); hold(ax, 'on'); set(ax, 'Color', 'w');
 
-    metric = "PostLD_FirstPeak_au";
-    yLab = 'Amplitude (post-light transition; au)';
-    ttl = sprintf('Post–lights-off first-peak amplitude — %s', faceLabel);
+    if nargin < 8 || isempty(metric)
+        metric = "PostLD_FirstPeak_au";
+    end
+    metric = string(metric);
+    [yLab, ttlPrefix] = script12_amp_figure_labels_(metric);
+    ttl = sprintf('%s — %s', ttlPrefix, faceLabel);
 
     if isempty(amp)
         text(ax, 0.5, 0.5, 'No amplitude data', 'Units', 'normalized', ...
@@ -761,39 +828,25 @@ function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, 
 
     sexes = ["Female", "Male"];
     cols = {pal.female, pal.male};
-    markers = {'o', 's'};
+    dx = 0.20;
+    offsets = [-dx, dx];
     xTick = 1:numel(facets);
     topY = nan(numel(facets), 1);
-    rng(42);
+    boxW = 0.28;
 
-    for si = 1:2
-        sx = sexes(si);
-        col = cols{si};
-        Bs = B(string(B.Sex) == sx, :);
-        means = nan(numel(facets), 1);
-        sds = nan(numel(facets), 1);
-        for fi = 1:numel(facets)
-            v = double(Bs.Value(Bs.Photoperiod_h == facets(fi)));
+    for fi = 1:numel(facets)
+        pairTop = nan(1, 2);
+        for si = 1:2
+            v = double(B.Value(B.Photoperiod_h == facets(fi) & string(B.Sex) == sexes(si)));
             v = v(isfinite(v));
-            if isempty(v), continue; end
-            means(fi) = mean(v);
-            if numel(v) > 1
-                sds(fi) = std(v);
-            else
-                sds(fi) = 0;
+            x = fi + offsets(si);
+            yTop = script12_draw_amp_box_(ax, x, v, cols{si}, boxW);
+            if isfinite(yTop)
+                pairTop(si) = yTop;
             end
-            jitter = (rand(numel(v), 1) - 0.5) * 0.22;
-            scatter(ax, fi + jitter, v, 28, ...
-                'Marker', markers{si}, 'MarkerFaceColor', col, 'MarkerEdgeColor', col * 0.7, ...
-                'MarkerFaceAlpha', 0.45, 'HandleVisibility', 'off');
-            topY(fi) = max([topY(fi); v(:); means(fi) + sds(fi)], [], 'omitnan');
         end
-        ok = isfinite(means);
-        if any(ok)
-            errorbar(ax, xTick(ok), means(ok), sds(ok), '-o', ...
-                'Color', col, 'LineWidth', 2.0, 'MarkerSize', 7, ...
-                'MarkerFaceColor', col, 'CapSize', 8, 'DisplayName', char(sx));
-            topY(ok) = max([topY(ok), means(ok) + sds(ok)], [], 2, 'omitnan');
+        if any(isfinite(pairTop))
+            topY(fi) = max(pairTop, [], 'omitnan');
         end
     end
 
@@ -803,7 +856,7 @@ function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, 
     end
     yDataMax = max(topY, [], 'omitnan');
     if ~isfinite(yDataMax), yDataMax = 1; end
-    pad = 0.06 * max(yDataMax, eps);
+    pad = 0.08 * max(yDataMax, eps);
     starCeil = yDataMax;
     for fi = 1:numel(facets)
         if isempty(St), continue; end
@@ -831,11 +884,77 @@ function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, 
     ylim(ax, [0, yTop]);
 
     set(ax, 'XTick', xTick, 'XTickLabel', arrayfun(@(x) char(script12_pp_label_(x)), facets, 'UniformOutput', false));
+    xlim(ax, [0.4, numel(facets) + 0.6]);
     xlabel(ax, 'Photoperiod', 'FontWeight', 'bold', 'FontName', theme.fontName);
     ylabel(ax, yLab, 'FontWeight', 'bold', 'FontName', theme.fontName, 'Interpreter', 'none');
     title(ax, ttl, 'FontWeight', 'bold', 'FontName', theme.fontName, 'Interpreter', 'none');
-    legend(ax, 'Location', 'best', 'Box', 'off', 'FontName', theme.fontName);
+
+    hF = patch(ax, nan, nan, cols{1}, 'FaceAlpha', 0.55, 'EdgeColor', cols{1} * 0.7, 'DisplayName', 'Female');
+    hM = patch(ax, nan, nan, cols{2}, 'FaceAlpha', 0.55, 'EdgeColor', cols{2} * 0.7, 'DisplayName', 'Male');
+    legend(ax, [hF, hM], {'Female', 'Male'}, 'Location', 'best', 'Box', 'off', 'FontName', theme.fontName);
     script12_style_axes_(ax, theme);
+end
+
+function yTop = script12_draw_amp_box_(ax, xCenter, y, faceColor, halfW)
+% Tukey box + whiskers; overlay jittered points. Returns max y used (data or whisker).
+    yTop = NaN;
+    y = y(:);
+    y = y(isfinite(y));
+    if isempty(y)
+        return;
+    end
+    if numel(y) == 1
+        plot(ax, xCenter, y, 'o', 'Color', faceColor, 'MarkerFaceColor', faceColor, ...
+            'MarkerSize', 6, 'HandleVisibility', 'off');
+        yTop = y;
+        return;
+    end
+
+    q1 = prctile(y, 25);
+    q2 = prctile(y, 50);
+    q3 = prctile(y, 75);
+    iqr = q3 - q1;
+    if ~isfinite(iqr) || iqr <= 0
+        iqr = max(max(y) - min(y), eps);
+    end
+    lo = max(min(y), q1 - 1.5 * iqr);
+    hi = min(max(y), q3 + 1.5 * iqr);
+    inWhisk = y(y >= lo & y <= hi);
+    if isempty(inWhisk)
+        wLo = min(y);
+        wHi = max(y);
+    else
+        wLo = min(inWhisk);
+        wHi = max(inWhisk);
+    end
+
+    patch(ax, xCenter + [-halfW, halfW, halfW, -halfW], [q1, q1, q3, q3], faceColor, ...
+        'FaceAlpha', 0.55, 'EdgeColor', faceColor * 0.7, 'LineWidth', 1.0, 'HandleVisibility', 'off');
+    plot(ax, [xCenter - halfW, xCenter + halfW], [q2, q2], '-', 'Color', faceColor * 0.35, ...
+        'LineWidth', 1.8, 'HandleVisibility', 'off');
+    plot(ax, [xCenter, xCenter], [wLo, q1], '-', 'Color', faceColor * 0.7, 'LineWidth', 1.0, 'HandleVisibility', 'off');
+    plot(ax, [xCenter, xCenter], [q3, wHi], '-', 'Color', faceColor * 0.7, 'LineWidth', 1.0, 'HandleVisibility', 'off');
+    plot(ax, [xCenter - halfW * 0.55, xCenter + halfW * 0.55], [wLo, wLo], '-', ...
+        'Color', faceColor * 0.7, 'LineWidth', 1.0, 'HandleVisibility', 'off');
+    plot(ax, [xCenter - halfW * 0.55, xCenter + halfW * 0.55], [wHi, wHi], '-', ...
+        'Color', faceColor * 0.7, 'LineWidth', 1.0, 'HandleVisibility', 'off');
+
+    rng(abs(round(1e3 * xCenter + sum(y))));
+    jitter = (rand(numel(y), 1) - 0.5) * halfW * 0.9;
+    scatter(ax, xCenter + jitter, y, 22, 'MarkerFaceColor', faceColor, ...
+        'MarkerEdgeColor', faceColor * 0.65, 'MarkerFaceAlpha', 0.5, 'HandleVisibility', 'off');
+    yTop = max([y(:); wHi], [], 'omitnan');
+end
+
+function [yLab, ttlPrefix] = script12_amp_figure_labels_(metric)
+    switch string(metric)
+        case "PreLD_FirstPeak_au"
+            yLab = 'Amplitude (pre-light transition; au)';
+            ttlPrefix = 'Pre–lights-off first-peak amplitude';
+        otherwise
+            yLab = 'Amplitude (post-light transition; au)';
+            ttlPrefix = 'Post–lights-off first-peak amplitude';
+    end
 end
 
 function script12_shade_ld_(ax, photoH, yl)
@@ -890,11 +1009,15 @@ function T = script12_read_sheet_(xlsxPath, sheetName)
 end
 
 function settings = script12_settings_table_(scriptName, scriptVersion, paths, cfg, facets)
+    ampMetricsStr = strjoin([ ...
+        "PostLD: first local max in [off, off+W] - mean [off-pre, off); ", ...
+        "PreLD: first local max in [off-W, off) - mean [off-W-pre, off-W); ", ...
+        "W=clamp(frac*period,[floor,cap]); fallback=window max"], "");
     names = ["ScriptName"; "ScriptVersion"; "RunTimestamp"; "CohortRoot"; ...
         "ProfilesXlsx"; "PlotMode"; "Facets"; ...
         "AmpBaseline_PreH"; "SearchWindow_PeriodFrac"; "SearchWindow_CapH"; "SearchWindow_FloorH"; ...
         "PeakProminenceMin"; "Alpha_FDR"; "MinN_PerSex"; "BootstrapN_CliffsDelta"; ...
-        "AmpMetric"; "SexAmpTest"; "Claim"];
+        "AmpMetrics"; "SexAmpTest"; "AmpPlotStyle"; "Claim"];
     vals = [string(scriptName); string(scriptVersion); ...
         string(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss')); ...
         string(paths.cohortRoot); string(paths.profilesXlsx); string(cfg.plotMode); ...
@@ -904,36 +1027,44 @@ function settings = script12_settings_table_(scriptName, scriptVersion, paths, c
         string(cfg.script12.peakProminenceMin); ...
         string(cfg.script12.alphaFdr); string(cfg.script12.minNPerSex); ...
         string(cfg.script12.bootstrapN); ...
-        "PostLD_FirstPeak_au = first local max in [off, off+W] − mean [off−pre, off); W=min(cap,max(floor,frac×period)); fallback=window max"; ...
-        "MannWhitney_U_two_sided + Cliff_delta_bootCI + BH-FDR within ClusterID|Metric"; ...
-        "Sex-stratified activity + post-LD first-peak amplitude; F vs M BH-FDR stars; no coherence / ridge panels"];
+        string(ampMetricsStr); ...
+        "MannWhitney_U_two_sided Female vs Male only; Cliff_delta_bootCI; BH-FDR within ClusterID|Metric"; ...
+        "Box-and-whisker F|M side-by-side per photoperiod; BH-FDR stars above pair"; ...
+        "Sex-stratified activity + pre/post-LD first-peak amplitude; F vs M stars; no pre-vs-post test"];
     settings = table(names, vals, 'VariableNames', {'Setting', 'Value'});
 end
 
 function script12_write_readme_(path, resolved, facets, cfg)
     fid = fopen(path, 'w', 'n', 'UTF-8');
     if fid < 0, return; end
-    fprintf(fid, '# Script 12 — Sex-stratified activity + post-LD amplitude\n\n');
-    fprintf(fid, 'Female | Male activity grids (L12–L22) and **post–lights-off first-peak amplitude** (F/M overlaid).\n\n');
-    fprintf(fid, 'No phase coherence or ridge-power panels (amplitude-only story).\n\n');
-    fprintf(fid, '## Amplitude metric\n\n');
+    fprintf(fid, '# Script 12 — Sex-stratified activity + pre/post-LD amplitude\n\n');
+    fprintf(fid, 'Female | Male activity grids (L12–L22) and **pre– / post–lights-off first-peak amplitude** (F/M overlaid).\n\n');
+    fprintf(fid, 'No phase coherence or ridge-power panels. **No pre-vs-post LD test** — Female vs Male only.\n\n');
+    fprintf(fid, '## Amplitude metrics\n\n');
     fprintf(fid, 'From Script 7 band-filtered, z-scored activity (`ActivityComponent_24h`), per mouse × photoperiod:\n\n');
-    fprintf(fid, '1. Baseline = mean activity in [lights-off − %.3g h, lights-off)\n', double(cfg.script12.ampBaselinePreH));
-    fprintf(fid, '2. Search window W = clamp(%.3g × cluster period centre, [%.3g, %.3g] h)\n', ...
+    fprintf(fid, 'Search window W = clamp(%.3g × cluster period centre, [%.3g, %.3g] h).\n\n', ...
         double(cfg.script12.searchWindowPeriodFrac), double(cfg.script12.searchWindowFloorH), ...
         double(cfg.script12.searchWindowCapH));
-    fprintf(fid, '3. **Primary:** first local maximum in [lights-off, lights-off + W] with (peak − baseline) ≥ %.3g\n', ...
+    fprintf(fid, '### Post-LD (reactive)\n\n');
+    fprintf(fid, '1. Baseline = mean in [lights-off − %.3g h, lights-off)\n', double(cfg.script12.ampBaselinePreH));
+    fprintf(fid, '2. First local max in [lights-off, lights-off + W] with (peak − baseline) ≥ %.3g\n', ...
         double(cfg.script12.peakProminenceMin));
-    fprintf(fid, '4. **Fallback:** window max − baseline (`PeakMethod = WindowMaxFallback`)\n');
-    fprintf(fid, '5. Amplitude = peak − baseline → y-axis label `Amplitude (post-light transition; au)`\n\n');
+    fprintf(fid, '3. Fallback: window max − baseline\n');
+    fprintf(fid, '4. Y-axis: `Amplitude (post-light transition; au)`\n\n');
+    fprintf(fid, '### Pre-LD (anticipatory)\n\n');
+    fprintf(fid, '1. Baseline = mean in [lights-off − W − %.3g h, lights-off − W)\n', double(cfg.script12.ampBaselinePreH));
+    fprintf(fid, '2. First local max in [lights-off − W, lights-off) with (peak − baseline) ≥ %.3g\n', ...
+        double(cfg.script12.peakProminenceMin));
+    fprintf(fid, '3. Fallback: window max − baseline\n');
+    fprintf(fid, '4. Y-axis: `Amplitude (pre-light transition; au)`\n\n');
     fprintf(fid, '## Sex comparison\n\n');
     fprintf(fid, '- **Test:** two-sided Mann–Whitney U Female vs Male at each photoperiod\n');
     fprintf(fid, '- **Gate:** n ≥ %d per sex\n', round(double(cfg.script12.minNPerSex)));
     fprintf(fid, '- **Effect size:** Cliff''s δ with bootstrap 95%% CI (n=%d)\n', ...
         round(double(cfg.script12.bootstrapN)));
-    fprintf(fid, '- **FDR:** Benjamini–Hochberg within each `ClusterID|Metric` (α = %.3g)\n', ...
+    fprintf(fid, '- **FDR:** Benjamini–Hochberg within each `ClusterID|Metric` (6 photoperiods per cluster per Pre/Post; α = %.3g)\n', ...
         double(cfg.script12.alphaFdr));
-    fprintf(fid, '- **Plot:** mean ± SD with individual points; BH-FDR stars only (no n / methods footnotes on figure)\n');
+    fprintf(fid, '- **Plot:** box-and-whisker F|M side-by-side per photoperiod with jittered points; BH-FDR stars above each pair\n');
     fprintf(fid, '- **Stars:** * / ** / *** from Q_BH when Significant_BH\n');
     fprintf(fid, '- **Tables:** `Sex_Amplitude_PerMouse.csv`, `Sex_Amplitude_Stats_BH_FDR.csv` (n and methods live here / README)\n\n');
     fprintf(fid, '## Clusters\n\n');

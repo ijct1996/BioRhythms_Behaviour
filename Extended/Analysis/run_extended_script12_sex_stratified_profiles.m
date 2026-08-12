@@ -1,9 +1,9 @@
 function run_extended_script12_sex_stratified_profiles(cohortRoot)
-%RUN_EXTENDED_SCRIPT12_SEX_STRATIFIED_PROFILES Extended Script 12 — activity + post-LD amplitude.
+%RUN_EXTENDED_SCRIPT12_SEX_STRATIFIED_PROFILES Extended Script 12 — activity + pre/post-LD amplitude.
 %
 %   Outputs for UR_1_3 C01 | UR_3_6 C01 | UR_3_6 C02:
 %     - Female|Male side-by-side 24h activity grids (L12–L22)
-%     - Post–lights-off first-peak amplitude vs photoperiod (F/M + BH-FDR stars)
+%     - Pre– and post–lights-off first-peak amplitude vs photoperiod (F/M + BH-FDR stars)
 %
 %   No coherence / ridge-power panels. Read-only Script 7 profiles.
 %

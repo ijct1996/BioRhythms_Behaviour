@@ -33,6 +33,21 @@
 ### Changed
 - Script 11: KDE violins only when n≥3 points; n<3 shows points + mean/median ticks only
 
+## [Unreleased] — Script 12 settings fix + amplitude boxplots
+
+### Fixed
+- Settings table row mismatch (`AmpMetrics` now single joined string)
+
+### Changed
+- Amplitude figures: F|M box-and-whisker side-by-side per photoperiod (replaces mean±SD line plot); stars above each pair
+
+## [Unreleased] — Script 12 pre-LD amplitude (anticipatory)
+
+### Added
+- Pre-LD first-peak amplitude (Option A): baseline `[off−W−pre, off−W)`, search `[off−W, off)` — mirrors post-LD
+- Figures: `Sex_Amplitude_PreLD_{cluster}` for UR_1_3 C01, UR_3_6 C01, UR_3_6 C02
+- Stats: Female vs Male only (no pre-vs-post test); BH-FDR within `ClusterID|Metric` (PreLD and PostLD corrected separately)
+
 ## [Unreleased] — Script 12 amplitude ylim floor at 0
 
 ### Changed

@@ -40,7 +40,7 @@ run_extended_script10_manuscript_figures   % pick cohort root (e.g. C57_LP)
 % 11 — dominant UR mean+median periods from Script 7 membership (no WP_TS)
 run_extended_script11_dominant_periods     % pick cohort root (e.g. C57_LP)
 
-% 12 — Female|Male activity + post-LD first-peak amplitude (F vs M BH-FDR; after Script 7)
+% 12 — Female|Male activity + pre/post-LD first-peak amplitude (F vs M BH-FDR; after Script 7)
 run_extended_script12_sex_stratified_profiles  % pick cohort root (e.g. C57_LP)
 ```
 
@@ -74,7 +74,7 @@ run_extended_script12_sex_stratified_profiles(cohort)
 | **9** | — | Cohort root | `Script9_SupplementaryFigures_*` (sex, cluster grids) |
 | **10** | — | Cohort root | `Script10_ManuscriptFigures_*` locked Figs 1–7 + `Package_Manuscript/` |
 | **11** | — | Cohort root (Script 7 profiles) | `Script11_DominantPeriod_*` mean+median τ + violins |
-| **12** | — | Cohort root (Script 7 profiles) | `Script12_SexStratifiedProfiles_*` F\|M activity + post-LD first-peak amplitude |
+| **12** | — | Cohort root (Script 7 profiles) | `Script12_SexStratifiedProfiles_*` F\|M activity + pre/post-LD amplitude |
 
 ## Script 11 dominant period outputs
 
@@ -95,7 +95,7 @@ Script 11 is **standalone** — Script 10 does not copy these into `Package_Manu
 
 ## Script 12 sex-stratified profiles
 
-Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C01, UR_3_6 C02, plus **post–lights-off first-peak amplitude** (F/M overlaid; mean ± SD; Mann–Whitney + BH-FDR stars only on figure). Amplitude = first local max after lights-off minus pre-off baseline (search window ≈ 1× cluster period, capped at 3 h). No coherence / ridge-power panels. Standalone; not in Script 10.
+Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C01, UR_3_6 C02, plus **pre– and post–lights-off first-peak amplitude** (F/M boxplots side-by-side per photoperiod; Mann–Whitney + BH-FDR stars above each pair). Pre-LD = anticipatory rise before lights-off; Post-LD = reactive rise after lights-off. **F vs M only** — no pre-vs-post test. FDR corrected separately within each cluster × metric (6 photoperiods each). No coherence / ridge-power panels. Standalone; not in Script 10.
 
 ## Script 10 locked main figures
 

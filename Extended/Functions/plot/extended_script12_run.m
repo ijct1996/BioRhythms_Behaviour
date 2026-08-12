@@ -1,5 +1,5 @@
 function out = extended_script12_run(cohortRoot, cfg)
-%EXTENDED_SCRIPT12_RUN Sex-stratified activity grids + post-LD amplitude (Script 12).
+%EXTENDED_SCRIPT12_RUN Sex-stratified activity grids + pre/post-LD amplitude (Script 12).
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
