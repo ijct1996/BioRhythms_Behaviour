@@ -33,6 +33,12 @@
 ### Changed
 - Script 11: KDE violins only when n≥3 points; n<3 shows points + mean/median ticks only
 
+## [Unreleased] — Script 10 panel letters off + LL photoperiod label
+
+### Changed
+- All Fig02–07 standalones/composites: A/B/C/E panel lettering disabled (temporary)
+- Photoperiod 24 h tick label: `LL` not `L24` (Fig03 co-expression and all `script10_pp_label_` uses)
+
 ## [Unreleased] — Script 11 sex-split violin spacing
 
 ### Fixed

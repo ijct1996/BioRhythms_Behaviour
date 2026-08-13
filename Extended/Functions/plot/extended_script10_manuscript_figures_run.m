@@ -688,11 +688,7 @@ function [manifest, widePath, tallPath, suppPaths] = script10_build_coherence_fi
         set(axA, 'YLim', [0 yMax], 'XLim', [0 24], 'Color', 'w');
         script10_style_axes_(axA, theme);
     end
-    if exportTransitions || writeComposite
-        sgTxt = sprintf('A  24 h phase coherence — %s', primaryFace);
-    else
-        sgTxt = sprintf('24 h phase coherence — %s', primaryFace);
-    end
+    sgTxt = sprintf('24 h phase coherence — %s', primaryFace);
     sgtitle(figA, sgTxt, ...
         'FontWeight', 'bold', 'FontName', theme.fontName, 'FontSize', 14, 'Interpreter', 'none');
     script10_add_figure_n_(figA, nMice, theme);
@@ -1657,7 +1653,12 @@ function n = script10_total_mice_(sexBalance)
 end
 
 function lbl = script10_pp_label_(pp)
-    lbl = "L" + string(round(double(pp)));
+    pp = round(double(pp));
+    if pp == 24
+        lbl = "LL";
+    else
+        lbl = "L" + string(pp);
+    end
 end
 
 function lbl = script10_band_display_(bandKey, mode)
@@ -1696,9 +1697,9 @@ function script10_style_axes_(ax, theme)
     end
 end
 
-function script10_panel_label_(ax, labelChar, theme)
-    text(ax, 0.02, 0.98, labelChar, 'Units', 'normalized', 'FontWeight', 'bold', ...
-        'FontSize', 16, 'FontName', theme.fontName, 'VerticalAlignment', 'top');
+function script10_panel_label_(ax, labelChar, theme) %#ok<INUSD>
+%SCRIPT10_PANEL_LABEL_ Panel letter (A/B/C…) — temporarily disabled for all figures.
+    return;
 end
 
 function script10_direct_line_label_(ax, x, y, txt, colour, theme, useTex)
