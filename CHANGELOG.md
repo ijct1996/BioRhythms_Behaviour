@@ -33,6 +33,18 @@
 ### Changed
 - Script 11: KDE violins only when n≥3 points; n<3 shows points + mean/median ticks only
 
+## [Unreleased] — Script 12 v1.8: clip ≥0, Tukey outliers, dual figures/stats
+
+### Added
+- `extended_grouped_x_layout.m` — shared F|M side-by-side spacing (also used in Script 11 population-by-sex)
+- Amplitude `Value_Raw` + clipped `Value = max(0, peak − baseline)`
+- Tukey 1.5×IQR outlier flags when cell n ≥ 6 (`OutlierExcluded`, `OutlierRule`, `CellN`)
+- Primary stats/figures (all data; hollow outliers) + sensitivity (`*_Sens`; outliers omitted)
+- Tables: `Sex_Amplitude_Stats_BH_FDR_Primary.csv`, `Sex_Amplitude_Stats_BH_FDR_Sensitivity.csv`, `Sex_Amplitude_Outliers_Tukey.csv`
+
+### Changed
+- Box whiskers/geometry clamped at y = 0; non-overlapping F|M boxes via grouped x layout
+
 ## [Unreleased] — Script 12 settings fix + amplitude boxplots
 
 ### Fixed

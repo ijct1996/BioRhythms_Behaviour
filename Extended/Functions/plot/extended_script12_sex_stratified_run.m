@@ -3,15 +3,15 @@ function out = extended_script12_sex_stratified_run(cohortRoot, cfg)
 %
 %   For each locked cluster (UR_1_3 C01, UR_3_6 C01, UR_3_6 C02):
 %     - Activity: Female | Male side-by-side L12–L22 (2×3 each)
-%     - Amplitude: F/M overlaid vs photoperiod — pre-LD and post-LD first local max
-%       minus baseline (search window ≈ 1× cluster period, capped)
-%     - F vs M Mann–Whitney U per photoperiod; BH-FDR within ClusterID×Metric;
+%     - Amplitude: F/M boxplots vs photoperiod — pre-LD and post-LD first local max
+%       minus baseline, clipped ≥ 0; primary all-data + sensitivity Tukey-removed
+%     - F vs M Mann–Whitney U per photoperiod; BH-FDR within Analysis×ClusterID×Metric;
 %       stars from Q_BH (* / ** / ***)
 %
 %   No phase coherence / ridge-power panels. Inputs: Script 7 profiles only.
 
     SCRIPT_NAME = 'extended_script12_sex_stratified_run';
-    SCRIPT_VERSION = '1.7';
+    SCRIPT_VERSION = '1.8';
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -52,7 +52,8 @@ function out = extended_script12_sex_stratified_run(cohortRoot, cfg)
     script12_log_(LOG, '%s v%s started', SCRIPT_NAME, SCRIPT_VERSION);
     script12_log_(LOG, 'Cohort: %s', paths.cohortRoot);
     script12_log_(LOG, 'profilesXlsx: %s', paths.profilesXlsx);
-    script12_log_(LOG, 'Metrics: PreLD + PostLD first-peak − baseline; F vs M only; BH-FDR within ClusterID×Metric');
+    script12_log_(LOG, 'Metrics: PreLD + PostLD first-peak − baseline (clipped ≥0); F vs M; BH-FDR within ClusterID×Metric');
+    script12_log_(LOG, 'Primary stats: all clipped values; sensitivity: Tukey 1.5×IQR removal when cell n>5');
 
     data = script12_load_data_(paths, cfg, LOG);
     panels = cfg.script12.panels;
@@ -61,15 +62,30 @@ function out = extended_script12_sex_stratified_run(cohortRoot, cfg)
 
     ampTable = script12_compute_amplitudes_(data, resolved, facets, cfg, LOG);
     if ~isempty(ampTable)
+        ampTable = script12_apply_outlier_flags_(ampTable, cfg, LOG);
         writetable(ampTable, fullfile(outDirs.tables, 'Sex_Amplitude_PerMouse.csv'));
-        script12_log_(LOG, 'Wrote Sex_Amplitude_PerMouse.csv (%d rows)', height(ampTable));
+        script12_log_(LOG, 'Wrote Sex_Amplitude_PerMouse.csv (%d rows; outliers=%d)', ...
+            height(ampTable), sum(ampTable.OutlierExcluded));
+        outlierRows = ampTable(ampTable.OutlierExcluded, :);
+        if ~isempty(outlierRows)
+            writetable(outlierRows, fullfile(outDirs.tables, 'Sex_Amplitude_Outliers_Tukey.csv'));
+            script12_log_(LOG, 'Wrote Sex_Amplitude_Outliers_Tukey.csv (%d rows)', height(outlierRows));
+        end
     end
 
-    statsTable = script12_sex_amplitude_stats_(ampTable, facets, cfg, LOG);
+    statsTable = script12_sex_amplitude_stats_(ampTable, facets, cfg, LOG, ...
+        "Primary_AllData", false);
+    statsSensTable = script12_sex_amplitude_stats_(ampTable, facets, cfg, LOG, ...
+        "Sensitivity_TukeyRemoved", true);
     if ~isempty(statsTable)
-        writetable(statsTable, fullfile(outDirs.tables, 'Sex_Amplitude_Stats_BH_FDR.csv'));
-        script12_log_(LOG, 'Wrote Sex_Amplitude_Stats_BH_FDR.csv (%d rows; Significant_BH=%d)', ...
+        writetable(statsTable, fullfile(outDirs.tables, 'Sex_Amplitude_Stats_BH_FDR_Primary.csv'));
+        script12_log_(LOG, 'Wrote Sex_Amplitude_Stats_BH_FDR_Primary.csv (%d rows; Significant_BH=%d)', ...
             height(statsTable), sum(logical(statsTable.Significant_BH)));
+    end
+    if ~isempty(statsSensTable)
+        writetable(statsSensTable, fullfile(outDirs.tables, 'Sex_Amplitude_Stats_BH_FDR_Sensitivity.csv'));
+        script12_log_(LOG, 'Wrote Sex_Amplitude_Stats_BH_FDR_Sensitivity.csv (%d rows; Significant_BH=%d)', ...
+            height(statsSensTable), sum(logical(statsSensTable.Significant_BH)));
     end
 
     plotFiles = table(string.empty(0,1), string.empty(0,1), string.empty(0,1), string.empty(0,1), ...
@@ -96,25 +112,36 @@ function out = extended_script12_sex_stratified_run(cohortRoot, cfg)
             script12_log_(LOG, 'Activity %s FAILED: %s', short, ME.message);
         end
 
-        ampSpecs = [ ...
-            struct('Metric', "PostLD_FirstPeak_au", 'Stem', "PostLD", 'PlotType', "Amplitude_PostLD_FirstPeak"); ...
-            struct('Metric', "PreLD_FirstPeak_au", 'Stem', "PreLD", 'PlotType', "Amplitude_PreLD_FirstPeak")];
-        for ai = 1:numel(ampSpecs)
-            spec = ampSpecs(ai);
-            try
-                figL = script12_make_amplitude_fig_(ampTable, statsTable, R, facets, theme, pal, face, spec.Metric);
-                stemL = sprintf('Sex_Amplitude_%s_%s', spec.Stem, short);
-                outL = script12_export_fig_(figL, fullfile(outDirs.figures, stemL), theme);
-                close(figL);
-                if strlength(outL) > 0
-                    nOk = nOk + 1;
-                    plotFiles = [plotFiles; {string(R.ClusterID), string(spec.PlotType), ...
-                        "F/M overlaid + BH-FDR stars", string(outL)}]; %#ok<AGROW>
-                    script12_log_(LOG, 'Amplitude %s %s: %s', spec.Stem, short, outL);
+        ampPlotSpecs = [ ...
+            struct('Metric', "PostLD_FirstPeak_au", 'Stem', "PostLD", ...
+                'PlotType', "Amplitude_PostLD_FirstPeak", 'PlotTypeSens', "Amplitude_PostLD_FirstPeak_Sens"); ...
+            struct('Metric', "PreLD_FirstPeak_au", 'Stem', "PreLD", ...
+                'PlotType', "Amplitude_PreLD_FirstPeak", 'PlotTypeSens', "Amplitude_PreLD_FirstPeak_Sens")];
+        for ai = 1:numel(ampPlotSpecs)
+            spec = ampPlotSpecs(ai);
+            plotVariants = [ ...
+                struct('Suffix', "", 'Stats', statsTable, 'OutlierDisplay', "hollow", ...
+                    'PlotType', spec.PlotType, 'Caption', "Primary all-data + hollow Tukey outliers (n>5)"); ...
+                struct('Suffix', "_Sens", 'Stats', statsSensTable, 'OutlierDisplay', "omit", ...
+                    'PlotType', spec.PlotTypeSens, 'Caption', "Sensitivity Tukey-removed + BH-FDR stars")];
+            for vi = 1:numel(plotVariants)
+                pv = plotVariants(vi);
+                try
+                    figL = script12_make_amplitude_fig_(ampTable, pv.Stats, R, facets, theme, pal, face, ...
+                        spec.Metric, 'OutlierDisplay', pv.OutlierDisplay);
+                    stemL = sprintf('Sex_Amplitude_%s_%s%s', spec.Stem, short, pv.Suffix);
+                    outL = script12_export_fig_(figL, fullfile(outDirs.figures, stemL), theme);
+                    close(figL);
+                    if strlength(outL) > 0
+                        nOk = nOk + 1;
+                        plotFiles = [plotFiles; {string(R.ClusterID), string(pv.PlotType), ...
+                            string(pv.Caption), string(outL)}]; %#ok<AGROW>
+                        script12_log_(LOG, 'Amplitude %s%s %s: %s', spec.Stem, pv.Suffix, short, outL);
+                    end
+                catch ME
+                    warning('Script12:Amp', 'Amplitude %s%s %s failed: %s', spec.Stem, pv.Suffix, short, ME.message);
+                    script12_log_(LOG, 'Amplitude %s%s %s FAILED: %s', spec.Stem, pv.Suffix, short, ME.message);
                 end
-            catch ME
-                warning('Script12:Amp', 'Amplitude %s %s failed: %s', spec.Stem, short, ME.message);
-                script12_log_(LOG, 'Amplitude %s %s FAILED: %s', spec.Stem, short, ME.message);
             end
         end
     end
@@ -132,7 +159,13 @@ function out = extended_script12_sex_stratified_run(cohortRoot, cfg)
         script12_safe_writetable_(ampTable, xlsxOut, 'Amplitude_PerMouse');
     end
     if ~isempty(statsTable)
-        script12_safe_writetable_(statsTable, xlsxOut, 'Amplitude_Stats_BH_FDR');
+        script12_safe_writetable_(statsTable, xlsxOut, 'Amplitude_Stats_Primary');
+    end
+    if ~isempty(statsSensTable)
+        script12_safe_writetable_(statsSensTable, xlsxOut, 'Amplitude_Stats_Sensitivity');
+    end
+    if ~isempty(ampTable) && any(ampTable.OutlierExcluded)
+        script12_safe_writetable_(ampTable(ampTable.OutlierExcluded, :), xlsxOut, 'Amplitude_Outliers');
     end
     writetable(plotFiles, fullfile(outDirs.tables, 'PlotFiles.csv'));
 
@@ -146,6 +179,7 @@ function out = extended_script12_sex_stratified_run(cohortRoot, cfg)
     out.plotFiles = plotFiles;
     out.amplitudeTable = ampTable;
     out.statsTable = statsTable;
+    out.statsSensTable = statsSensTable;
     out.logPath = logPath;
 
     fprintf('Figures: %d written under %s\n', nOk, outDirs.figures);
@@ -207,6 +241,18 @@ function cfg = script12_fill_cfg_(cfg)
     if ~isfield(cfg.script12, 'bootstrapN') || isempty(cfg.script12.bootstrapN)
         cfg.script12.bootstrapN = 2000;
     end
+    if ~isfield(cfg.script12, 'outlierMinN') || isempty(cfg.script12.outlierMinN)
+        cfg.script12.outlierMinN = 6;   % apply Tukey when n > 5
+    end
+    if ~isfield(cfg.script12, 'outlierIqrMult') || isempty(cfg.script12.outlierIqrMult)
+        cfg.script12.outlierIqrMult = 1.5;
+    end
+    if ~isfield(cfg.script12, 'ampGroupHalfWidth') || isempty(cfg.script12.ampGroupHalfWidth)
+        cfg.script12.ampGroupHalfWidth = 0.18;
+    end
+    if ~isfield(cfg.script12, 'ampGroupGap') || isempty(cfg.script12.ampGroupGap)
+        cfg.script12.ampGroupGap = 0.08;
+    end
 end
 
 function theme = script12_theme_(cfg, pal)
@@ -220,6 +266,13 @@ function theme = script12_theme_(cfg, pal)
     theme.axesLineWidth = pal.axesLineWidth;
     theme.tickDir = pal.tickDir;
     theme.palette = pal;
+    if isfield(cfg, 'script12')
+        theme.ampGroupHalfWidth = double(cfg.script12.ampGroupHalfWidth);
+        theme.ampGroupGap = double(cfg.script12.ampGroupGap);
+    else
+        theme.ampGroupHalfWidth = 0.18;
+        theme.ampGroupGap = 0.08;
+    end
 end
 
 function [outDirs, modeLabel] = script12_make_output_dirs_(cohortRoot, plotMode)
@@ -438,8 +491,12 @@ function amp = script12_compute_amplitudes_(data, resolved, facets, cfg, LOG)
                 peakFn = metricSpecs(mi).Fn;
                 ampVal = NaN; peakZT = NaN; baseline = NaN; method = "Skipped";
                 [ampVal, peakZT, baseline, method] = peakFn(zt, y, tOff, preH, W, promMin);
+                ampRaw = ampVal;
+                if isfinite(ampVal)
+                    ampVal = max(0, ampVal);
+                end
                 rows(end + 1, :) = {cid, string(R.BandName), double(R.ClusterRank), ...
-                    photo, sig, sx, metric, ampVal, peakZT, baseline, W, method, ptp}; %#ok<AGROW>
+                    photo, sig, sx, metric, ampRaw, ampVal, peakZT, baseline, W, method, ptp}; %#ok<AGROW>
             end
         end
     end
@@ -451,7 +508,7 @@ function amp = script12_compute_amplitudes_(data, resolved, facets, cfg, LOG)
     end
     amp = cell2table(rows, 'VariableNames', ...
         {'ClusterID','BandName','ClusterRank','Photoperiod_h','SignalID','Sex', ...
-         'Metric','Value','PeakZT_h','Baseline_z','SearchWindow_h','PeakMethod','PeakToTrough_z'});
+         'Metric','Value_Raw','Value','PeakZT_h','Baseline_z','SearchWindow_h','PeakMethod','PeakToTrough_z'});
     for mi = 1:numel(metricSpecs)
         m = metricSpecs(mi).Metric;
         sub = amp(string(amp.Metric) == m, :);
@@ -565,6 +622,81 @@ function [ampVal, peakZT, baseline, method] = script12_first_peak_preld_(zt, y, 
     method = "WindowMaxFallback";
 end
 
+function amp = script12_apply_outlier_flags_(amp, cfg, LOG)
+%SCRIPT12_APPLY_OUTLIER_FLAGS_ Tukey 1.5×IQR outlier flags per analysis cell.
+%   Cell = ClusterID × Photoperiod_h × Sex × Metric. Applied only when n > 5 (≥6).
+%   Exploratory flag for sensitivity analysis; primary stats use all clipped values.
+    if isempty(amp)
+        return;
+    end
+    minN = max(2, round(double(cfg.script12.outlierMinN)));
+    iqrMult = double(cfg.script12.outlierIqrMult);
+    if ~isfinite(iqrMult) || iqrMult <= 0
+        iqrMult = 1.5;
+    end
+
+    amp.OutlierExcluded = false(height(amp), 1);
+    amp.OutlierRule = repmat("NotTested_n<=5", height(amp), 1);
+    amp.CellN = nan(height(amp), 1);
+
+    keyVars = {'ClusterID','Photoperiod_h','Sex','Metric'};
+    if ~all(ismember(keyVars, amp.Properties.VariableNames))
+        return;
+    end
+
+    [~, ~, ic] = unique(amp(:, keyVars), 'rows', 'stable');
+    nCells = max(ic);
+    nFlagged = 0;
+    nTested = 0;
+
+    for g = 1:nCells
+        idx = find(ic == g);
+        vals = double(amp.Value(idx));
+        vals = vals(isfinite(vals));
+        n = numel(vals);
+        amp.CellN(idx) = n;
+        if n < minN
+            continue;
+        end
+        nTested = nTested + 1;
+        q1 = prctile(vals, 25);
+        q3 = prctile(vals, 75);
+        iqr = q3 - q1;
+        if ~isfinite(iqr) || iqr <= 0
+            iqr = max(max(vals) - min(vals), eps);
+        end
+        lo = q1 - iqrMult * iqr;
+        hi = q3 + iqrMult * iqr;
+        for ri = 1:numel(idx)
+            v = double(amp.Value(idx(ri)));
+            if ~isfinite(v)
+                amp.OutlierRule(idx(ri)) = "Tukey1.5IQR_Missing";
+                continue;
+            end
+            if v < lo || v > hi
+                amp.OutlierExcluded(idx(ri)) = true;
+                amp.OutlierRule(idx(ri)) = "Tukey1.5IQR_Excluded";
+                nFlagged = nFlagged + 1;
+            else
+                amp.OutlierRule(idx(ri)) = "Tukey1.5IQR_Kept";
+            end
+        end
+    end
+    script12_log_(LOG, 'Outlier flags: Tukey %.1f×IQR when n≥%d; cells tested=%d; rows excluded=%d/%d', ...
+        iqrMult, minN, nTested, nFlagged, height(amp));
+end
+
+function nOut = script12_count_outliers_in_cell_(amp, cid, photo, sx, metric)
+    nOut = 0;
+    if isempty(amp) || ~ismember('OutlierExcluded', amp.Properties.VariableNames)
+        return;
+    end
+    B = amp(string(amp.ClusterID) == string(cid) & amp.Photoperiod_h == photo & ...
+        string(amp.Sex) == string(sx) & string(amp.Metric) == string(metric), :);
+    if isempty(B), return; end
+    nOut = sum(logical(B.OutlierExcluded));
+end
+
 %% Activity grid (F|M side-by-side)
 function fig = script12_make_activity_grid_(T, R, facets, theme, pal, faceLabel)
     facets = double(facets(:))';
@@ -669,17 +801,25 @@ function has = script12_plot_activity_facet_(ax, T, R, photo, sex, meanCol, them
 end
 
 %% F vs M amplitude stats (Mann–Whitney + BH-FDR + Cliff's δ)
-function S = script12_sex_amplitude_stats_(amp, facets, cfg, LOG)
+function S = script12_sex_amplitude_stats_(amp, facets, cfg, LOG, analysisLabel, excludeOutliers)
 %SCRIPT12_SEX_AMPLITUDE_STATS_ Per photoperiod Female vs Male Mann–Whitney U.
-%   Assumptions: independent mice; two-sided nonparametric location shift;
-%   no normality required (small / unequal n). Effect size: Cliff's δ with
-%   percentile bootstrap 95% CI. FDR: BH within ClusterID × Metric (α = cfg).
+%   Primary: all clipped values. Sensitivity: exclude Tukey-flagged outliers (when n>5).
+    if nargin < 5 || isempty(analysisLabel)
+        analysisLabel = "Primary_AllData";
+    end
+    if nargin < 6 || isempty(excludeOutliers)
+        excludeOutliers = false;
+    end
+    analysisLabel = string(analysisLabel);
+    excludeOutliers = logical(excludeOutliers);
+
     facets = double(facets(:))';
     minN = max(1, round(double(cfg.script12.minNPerSex)));
     alpha = double(cfg.script12.alphaFdr);
     nBoot = max(200, round(double(cfg.script12.bootstrapN)));
     emptyCols = { ...
-        'ClusterID','BandName','ClusterRank','Photoperiod_h','Metric','Test', ...
+        'Analysis','ClusterID','BandName','ClusterRank','Photoperiod_h','Metric','Test', ...
+        'N_Female_Raw','N_Male_Raw','N_Outliers_Female','N_Outliers_Male', ...
         'N_Female','N_Male','Median_Female','Median_Male','Mean_Female','Mean_Male', ...
         'PValue_raw','CliffsDelta','CliffsDelta_CI_lo','CliffsDelta_CI_hi', ...
         'FDR_Family','SkippedReason'};
@@ -687,7 +827,7 @@ function S = script12_sex_amplitude_stats_(amp, facets, cfg, LOG)
         S = cell2table(cell(0, numel(emptyCols)), 'VariableNames', emptyCols);
         S = extended_bh_fdr(S, 'PValue_raw', alpha);
         S.StarLabel = strings(0, 1);
-        script12_log_(LOG, 'Amplitude stats: empty amp table');
+        script12_log_(LOG, 'Amplitude stats [%s]: empty amp table', char(analysisLabel));
         return;
     end
 
@@ -702,13 +842,28 @@ function S = script12_sex_amplitude_stats_(amp, facets, cfg, LOG)
         crank = double(clusters.ClusterRank(ci));
         for mi = 1:numel(metrics)
             metric = metrics(mi);
-            fam = string(sprintf('%s|%s', char(cid), char(metric)));
+            fam = string(sprintf('%s|%s|%s', char(analysisLabel), char(cid), char(metric)));
             for fi = 1:numel(facets)
                 photo = facets(fi);
                 B = amp(string(amp.ClusterID) == cid & string(amp.Metric) == metric & ...
                     amp.Photoperiod_h == photo, :);
-                vF = double(B.Value(string(B.Sex) == "Female"));
-                vM = double(B.Value(string(B.Sex) == "Male"));
+                vFraw = double(B.Value(string(B.Sex) == "Female"));
+                vMraw = double(B.Value(string(B.Sex) == "Male"));
+                vFraw = vFraw(isfinite(vFraw));
+                vMraw = vMraw(isfinite(vMraw));
+                nFraw = numel(vFraw); nMraw = numel(vMraw);
+                nOutF = script12_count_outliers_in_cell_(amp, cid, photo, "Female", metric);
+                nOutM = script12_count_outliers_in_cell_(amp, cid, photo, "Male", metric);
+
+                if excludeOutliers && ismember('OutlierExcluded', B.Properties.VariableNames)
+                    BF = B(string(B.Sex) == "Female", :);
+                    BM = B(string(B.Sex) == "Male", :);
+                    vF = double(BF.Value(~logical(BF.OutlierExcluded)));
+                    vM = double(BM.Value(~logical(BM.OutlierExcluded)));
+                else
+                    vF = vFraw;
+                    vM = vMraw;
+                end
                 vF = vF(isfinite(vF));
                 vM = vM(isfinite(vM));
                 nF = numel(vF); nM = numel(vM);
@@ -717,7 +872,7 @@ function S = script12_sex_amplitude_stats_(amp, facets, cfg, LOG)
                 if nM > 0, medM = median(vM); meanM = mean(vM); end
                 p = NaN; d = NaN; dLo = NaN; dHi = NaN; skip = "";
                 if nF < minN || nM < minN
-                    skip = sprintf('n<%d per sex', minN);
+                    skip = sprintf('n<%d per sex after filter', minN);
                 else
                     try
                         p = ranksum(vF, vM);  % two-sided Mann–Whitney U
@@ -727,8 +882,9 @@ function S = script12_sex_amplitude_stats_(amp, facets, cfg, LOG)
                     end
                     [d, dLo, dHi] = script12_cliffs_delta_ci_(vF, vM, nBoot);
                 end
-                rows(end + 1, :) = {cid, bname, crank, photo, metric, ...
-                    "MannWhitney_U_two_sided", nF, nM, medF, medM, meanF, meanM, ...
+                rows(end + 1, :) = {analysisLabel, cid, bname, crank, photo, metric, ...
+                    "MannWhitney_U_two_sided", nFraw, nMraw, nOutF, nOutM, ...
+                    nF, nM, medF, medM, meanF, meanM, ...
                     p, d, dLo, dHi, fam, skip}; %#ok<AGROW>
             end
         end
@@ -747,9 +903,9 @@ function S = script12_sex_amplitude_stats_(amp, facets, cfg, LOG)
         labs(i) = string(script12_fdr_star_(S.Q_BH(i), S.Significant_BH(i)));
     end
     S.StarLabel = labs;
-    script12_log_(LOG, ['Amplitude stats: Mann–Whitney F vs M; minN/sex=%d; BH-FDR α=%.3g ', ...
-        'within ClusterID×Metric; Significant_BH=%d/%d'], ...
-        minN, alpha, sum(logical(S.Significant_BH)), height(S));
+    script12_log_(LOG, ['Amplitude stats [%s]: Mann–Whitney F vs M; minN/sex=%d; ', ...
+        'BH-FDR α=%.3g within Analysis×ClusterID×Metric; Significant_BH=%d/%d'], ...
+        char(analysisLabel), minN, alpha, sum(logical(S.Significant_BH)), height(S));
 end
 
 function star = script12_fdr_star_(q, sig)
@@ -798,8 +954,22 @@ function d = script12_cliffs_delta_(x, y)
 end
 
 %% Amplitude figure — F/M boxplots side-by-side + BH-FDR stars above each photoperiod pair
-function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, faceLabel, metric)
-% F vs M box-and-whisker per photoperiod (side-by-side); BH-FDR stars above each pair.
+function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, faceLabel, metric, varargin)
+% F vs M box-and-whisker per photoperiod. Optional Name-Value:
+%   'OutlierDisplay' — 'hollow' (default) | 'omit'
+    p = inputParser;
+    addRequired(p, 'amp');
+    addRequired(p, 'statsT');
+    addRequired(p, 'R');
+    addRequired(p, 'facets');
+    addRequired(p, 'theme');
+    addRequired(p, 'pal');
+    addRequired(p, 'faceLabel');
+    addRequired(p, 'metric');
+    addParameter(p, 'OutlierDisplay', 'hollow', @(x) any(string(x) == ["hollow", "omit"]));
+    parse(p, amp, statsT, R, facets, theme, pal, faceLabel, metric, varargin{:});
+    outlierDisplay = char(string(p.Results.OutlierDisplay));
+
     facets = double(facets(:))';
     fig = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 920 540]);
     ax = axes(fig); hold(ax, 'on'); set(ax, 'Color', 'w');
@@ -808,7 +978,7 @@ function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, 
         metric = "PostLD_FirstPeak_au";
     end
     metric = string(metric);
-    [yLab, ttlPrefix] = script12_amp_figure_labels_(metric);
+    [yLab, ttlPrefix] = script12_amp_figure_labels_(metric, outlierDisplay);
     ttl = sprintf('%s — %s', ttlPrefix, faceLabel);
 
     if isempty(amp)
@@ -828,19 +998,26 @@ function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, 
 
     sexes = ["Female", "Male"];
     cols = {pal.female, pal.male};
-    dx = 0.20;
-    offsets = [-dx, dx];
+    xLayout = extended_grouped_x_layout(2, 'HalfWidth', theme.ampGroupHalfWidth, 'Gap', theme.ampGroupGap);
+    offsets = xLayout.offsets;
+    boxW = xLayout.halfWidth;
     xTick = 1:numel(facets);
     topY = nan(numel(facets), 1);
-    boxW = 0.28;
 
     for fi = 1:numel(facets)
         pairTop = nan(1, 2);
         for si = 1:2
-            v = double(B.Value(B.Photoperiod_h == facets(fi) & string(B.Sex) == sexes(si)));
-            v = v(isfinite(v));
+            Bs = B(B.Photoperiod_h == facets(fi) & string(B.Sex) == sexes(si), :);
+            v = double(Bs.Value);
+            outMask = false(numel(v), 1);
+            if ismember('OutlierExcluded', Bs.Properties.VariableNames)
+                outMask = logical(Bs.OutlierExcluded);
+            end
+            keep = isfinite(v);
+            v = v(keep);
+            outMask = outMask(keep);
             x = fi + offsets(si);
-            yTop = script12_draw_amp_box_(ax, x, v, cols{si}, boxW);
+            yTop = script12_draw_amp_box_(ax, x, v, cols{si}, boxW, outlierDisplay, outMask);
             if isfinite(yTop)
                 pairTop(si) = yTop;
             end
@@ -891,42 +1068,87 @@ function fig = script12_make_amplitude_fig_(amp, statsT, R, facets, theme, pal, 
 
     hF = patch(ax, nan, nan, cols{1}, 'FaceAlpha', 0.55, 'EdgeColor', cols{1} * 0.7, 'DisplayName', 'Female');
     hM = patch(ax, nan, nan, cols{2}, 'FaceAlpha', 0.55, 'EdgeColor', cols{2} * 0.7, 'DisplayName', 'Male');
-    legend(ax, [hF, hM], {'Female', 'Male'}, 'Location', 'best', 'Box', 'off', 'FontName', theme.fontName);
+    legH = [hF, hM];
+    legL = {'Female', 'Male'};
+    if strcmpi(outlierDisplay, 'hollow') && ismember('OutlierExcluded', B.Properties.VariableNames) && any(B.OutlierExcluded)
+        hO = plot(ax, nan, nan, 'o', 'MarkerSize', 7, 'MarkerFaceColor', 'none', ...
+            'MarkerEdgeColor', [0.35 0.35 0.35], 'LineWidth', 1.2, 'DisplayName', 'Tukey outlier (excluded in sensitivity)');
+        legH(end + 1) = hO; %#ok<AGROW>
+        legL{end + 1} = 'Tukey outlier (sensitivity only)'; %#ok<AGROW>
+    end
+    legend(ax, legH, legL, 'Location', 'best', 'Box', 'off', 'FontName', theme.fontName);
     script12_style_axes_(ax, theme);
 end
 
-function yTop = script12_draw_amp_box_(ax, xCenter, y, faceColor, halfW)
-% Tukey box + whiskers; overlay jittered points. Returns max y used (data or whisker).
+function yTop = script12_draw_amp_box_(ax, xCenter, y, faceColor, halfW, outlierDisplay, outlierMask)
+% Tukey box + whiskers (y ≥ 0); overlay jittered points. outlierDisplay: hollow | omit.
     yTop = NaN;
+    if nargin < 6 || isempty(outlierDisplay)
+        outlierDisplay = 'hollow';
+    end
+    if nargin < 7 || isempty(outlierMask)
+        outlierMask = false(size(y));
+    end
     y = y(:);
-    y = y(isfinite(y));
+    outlierMask = logical(outlierMask(:));
+    if numel(outlierMask) ~= numel(y)
+        outlierMask = false(size(y));
+    end
+    keep = isfinite(y);
+    y = y(keep);
+    outlierMask = outlierMask(keep);
     if isempty(y)
         return;
     end
-    if numel(y) == 1
-        plot(ax, xCenter, y, 'o', 'Color', faceColor, 'MarkerFaceColor', faceColor, ...
-            'MarkerSize', 6, 'HandleVisibility', 'off');
-        yTop = y;
+
+    yPlot = y;
+    outPlot = outlierMask;
+    if strcmpi(outlierDisplay, 'omit')
+        yPlot = y(~outlierMask);
+        outPlot = false(size(yPlot));
+    end
+    if isempty(yPlot)
         return;
     end
 
-    q1 = prctile(y, 25);
-    q2 = prctile(y, 50);
-    q3 = prctile(y, 75);
+    yFloor = 0;
+    if numel(yPlot) == 1
+        if ~(strcmpi(outlierDisplay, 'omit') && outlierMask(1))
+            if outlierMask(1) && strcmpi(outlierDisplay, 'hollow')
+                plot(ax, xCenter, max(yFloor, yPlot), 'o', 'MarkerFaceColor', 'none', ...
+                    'MarkerEdgeColor', [0.35 0.35 0.35], 'MarkerSize', 7, 'LineWidth', 1.1, ...
+                    'HandleVisibility', 'off');
+            else
+                plot(ax, xCenter, max(yFloor, yPlot), 'o', 'Color', faceColor, ...
+                    'MarkerFaceColor', faceColor, 'MarkerSize', 6, 'HandleVisibility', 'off');
+            end
+            yTop = max(yFloor, yPlot);
+        end
+        return;
+    end
+
+    q1 = prctile(yPlot, 25);
+    q2 = prctile(yPlot, 50);
+    q3 = prctile(yPlot, 75);
     iqr = q3 - q1;
     if ~isfinite(iqr) || iqr <= 0
-        iqr = max(max(y) - min(y), eps);
+        iqr = max(max(yPlot) - min(yPlot), eps);
     end
-    lo = max(min(y), q1 - 1.5 * iqr);
-    hi = min(max(y), q3 + 1.5 * iqr);
-    inWhisk = y(y >= lo & y <= hi);
+    lo = q1 - 1.5 * iqr;
+    hi = q3 + 1.5 * iqr;
+    inWhisk = yPlot(yPlot >= lo & yPlot <= hi);
     if isempty(inWhisk)
-        wLo = min(y);
-        wHi = max(y);
+        wLo = min(yPlot);
+        wHi = max(yPlot);
     else
         wLo = min(inWhisk);
         wHi = max(inWhisk);
     end
+    q1 = max(yFloor, q1);
+    q2 = max(yFloor, q2);
+    q3 = max(yFloor, q3);
+    wLo = max(yFloor, wLo);
+    wHi = max(yFloor, wHi);
 
     patch(ax, xCenter + [-halfW, halfW, halfW, -halfW], [q1, q1, q3, q3], faceColor, ...
         'FaceAlpha', 0.55, 'EdgeColor', faceColor * 0.7, 'LineWidth', 1.0, 'HandleVisibility', 'off');
@@ -941,19 +1163,38 @@ function yTop = script12_draw_amp_box_(ax, xCenter, y, faceColor, halfW)
 
     rng(abs(round(1e3 * xCenter + sum(y))));
     jitter = (rand(numel(y), 1) - 0.5) * halfW * 0.9;
-    scatter(ax, xCenter + jitter, y, 22, 'MarkerFaceColor', faceColor, ...
-        'MarkerEdgeColor', faceColor * 0.65, 'MarkerFaceAlpha', 0.5, 'HandleVisibility', 'off');
-    yTop = max([y(:); wHi], [], 'omitnan');
+    for pi = 1:numel(y)
+        yi = max(yFloor, y(pi));
+        if strcmpi(outlierDisplay, 'omit') && outlierMask(pi)
+            continue;
+        end
+        if outlierMask(pi) && strcmpi(outlierDisplay, 'hollow')
+            scatter(ax, xCenter + jitter(pi), yi, 28, 'MarkerFaceColor', 'none', ...
+                'MarkerEdgeColor', [0.35 0.35 0.35], 'LineWidth', 1.1, 'HandleVisibility', 'off');
+        else
+            scatter(ax, xCenter + jitter(pi), yi, 22, 'MarkerFaceColor', faceColor, ...
+                'MarkerEdgeColor', faceColor * 0.65, 'MarkerFaceAlpha', 0.5, 'HandleVisibility', 'off');
+        end
+    end
+    yTop = max([max(yFloor, y(:)); wHi], [], 'omitnan');
 end
 
-function [yLab, ttlPrefix] = script12_amp_figure_labels_(metric)
+function [yLab, ttlPrefix] = script12_amp_figure_labels_(metric, outlierDisplay)
+    if nargin < 2 || isempty(outlierDisplay)
+        outlierDisplay = 'hollow';
+    end
     switch string(metric)
         case "PreLD_FirstPeak_au"
             yLab = 'Amplitude (pre-light transition; au)';
-            ttlPrefix = 'Pre–lights-off first-peak amplitude';
+            base = 'Pre–lights-off first-peak amplitude';
         otherwise
             yLab = 'Amplitude (post-light transition; au)';
-            ttlPrefix = 'Post–lights-off first-peak amplitude';
+            base = 'Post–lights-off first-peak amplitude';
+    end
+    if strcmpi(outlierDisplay, 'omit')
+        ttlPrefix = [base, ' (sensitivity, Tukey outliers removed)'];
+    else
+        ttlPrefix = base;
     end
 end
 
@@ -1012,12 +1253,13 @@ function settings = script12_settings_table_(scriptName, scriptVersion, paths, c
     ampMetricsStr = strjoin([ ...
         "PostLD: first local max in [off, off+W] - mean [off-pre, off); ", ...
         "PreLD: first local max in [off-W, off) - mean [off-W-pre, off-W); ", ...
-        "W=clamp(frac*period,[floor,cap]); fallback=window max"], "");
+        "Value=max(0, peak-baseline); W=clamp(frac*period,[floor,cap]); fallback=window max"], "");
     names = ["ScriptName"; "ScriptVersion"; "RunTimestamp"; "CohortRoot"; ...
         "ProfilesXlsx"; "PlotMode"; "Facets"; ...
         "AmpBaseline_PreH"; "SearchWindow_PeriodFrac"; "SearchWindow_CapH"; "SearchWindow_FloorH"; ...
         "PeakProminenceMin"; "Alpha_FDR"; "MinN_PerSex"; "BootstrapN_CliffsDelta"; ...
-        "AmpMetrics"; "SexAmpTest"; "AmpPlotStyle"; "Claim"];
+        "OutlierMinN"; "OutlierIqrMult"; "AmpGroupHalfWidth"; "AmpGroupGap"; ...
+        "AmpMetrics"; "SexAmpTest"; "OutlierPolicy"; "AmpPlotStyle"; "Claim"];
     vals = [string(scriptName); string(scriptVersion); ...
         string(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss')); ...
         string(paths.cohortRoot); string(paths.profilesXlsx); string(cfg.plotMode); ...
@@ -1027,10 +1269,13 @@ function settings = script12_settings_table_(scriptName, scriptVersion, paths, c
         string(cfg.script12.peakProminenceMin); ...
         string(cfg.script12.alphaFdr); string(cfg.script12.minNPerSex); ...
         string(cfg.script12.bootstrapN); ...
+        string(cfg.script12.outlierMinN); string(cfg.script12.outlierIqrMult); ...
+        string(cfg.script12.ampGroupHalfWidth); string(cfg.script12.ampGroupGap); ...
         string(ampMetricsStr); ...
-        "MannWhitney_U_two_sided Female vs Male only; Cliff_delta_bootCI; BH-FDR within ClusterID|Metric"; ...
-        "Box-and-whisker F|M side-by-side per photoperiod; BH-FDR stars above pair"; ...
-        "Sex-stratified activity + pre/post-LD first-peak amplitude; F vs M stars; no pre-vs-post test"];
+        "Primary: MannWhitney_U Female vs Male on all clipped values; BH-FDR within Analysis×ClusterID×Metric; Sensitivity: same after Tukey removal"; ...
+        "Tukey 1.5×IQR per Cluster×Photoperiod×Sex×Metric when n>5; flag OutlierExcluded; primary stats keep all; sensitivity excludes"; ...
+        "Box-and-whisker F|M side-by-side (extended_grouped_x_layout); primary=hollow outliers; *_Sens=omit outliers; y≥0"; ...
+        "Sex-stratified activity + pre/post-LD first-peak amplitude; primary F vs M; sensitivity Tukey-removed; no pre-vs-post test"];
     settings = table(names, vals, 'VariableNames', {'Setting', 'Value'});
 end
 
@@ -1038,8 +1283,8 @@ function script12_write_readme_(path, resolved, facets, cfg)
     fid = fopen(path, 'w', 'n', 'UTF-8');
     if fid < 0, return; end
     fprintf(fid, '# Script 12 — Sex-stratified activity + pre/post-LD amplitude\n\n');
-    fprintf(fid, 'Female | Male activity grids (L12–L22) and **pre– / post–lights-off first-peak amplitude** (F/M overlaid).\n\n');
-    fprintf(fid, 'No phase coherence or ridge-power panels. **No pre-vs-post LD test** — Female vs Male only.\n\n');
+    fprintf(fid, 'Female | Male activity grids (L12–L22) and **pre– / post–lights-off first-peak amplitude** (F/M boxplots).\n\n');
+    fprintf(fid, 'Amplitude = max(0, first-peak − baseline). Y-axis ≥ 0. No phase coherence or ridge-power panels. **No pre-vs-post LD test** — Female vs Male only.\n\n');
     fprintf(fid, '## Amplitude metrics\n\n');
     fprintf(fid, 'From Script 7 band-filtered, z-scored activity (`ActivityComponent_24h`), per mouse × photoperiod:\n\n');
     fprintf(fid, 'Search window W = clamp(%.3g × cluster period centre, [%.3g, %.3g] h).\n\n', ...
@@ -1049,24 +1294,32 @@ function script12_write_readme_(path, resolved, facets, cfg)
     fprintf(fid, '1. Baseline = mean in [lights-off − %.3g h, lights-off)\n', double(cfg.script12.ampBaselinePreH));
     fprintf(fid, '2. First local max in [lights-off, lights-off + W] with (peak − baseline) ≥ %.3g\n', ...
         double(cfg.script12.peakProminenceMin));
-    fprintf(fid, '3. Fallback: window max − baseline\n');
-    fprintf(fid, '4. Y-axis: `Amplitude (post-light transition; au)`\n\n');
+    fprintf(fid, '3. Fallback: window max − baseline; **Value = max(0, peak − baseline)**\n');
+    fprintf(fid, '4. Y-axis: `Amplitude (post-light transition; au)` (≥ 0)\n\n');
     fprintf(fid, '### Pre-LD (anticipatory)\n\n');
     fprintf(fid, '1. Baseline = mean in [lights-off − W − %.3g h, lights-off − W)\n', double(cfg.script12.ampBaselinePreH));
     fprintf(fid, '2. First local max in [lights-off − W, lights-off) with (peak − baseline) ≥ %.3g\n', ...
         double(cfg.script12.peakProminenceMin));
-    fprintf(fid, '3. Fallback: window max − baseline\n');
-    fprintf(fid, '4. Y-axis: `Amplitude (pre-light transition; au)`\n\n');
+    fprintf(fid, '3. Fallback: window max − baseline; **Value = max(0, peak − baseline)**\n');
+    fprintf(fid, '4. Y-axis: `Amplitude (pre-light transition; au)` (≥ 0)\n\n');
+    fprintf(fid, '## Outliers (sensitivity)\n\n');
+    fprintf(fid, '- **Rule:** Tukey 1.5×IQR within each Cluster × Photoperiod × Sex × Metric when cell n ≥ %d\n', ...
+        round(double(cfg.script12.outlierMinN)));
+    fprintf(fid, '- **Primary analysis:** all clipped values; outliers shown as **hollow** points on standard figures\n');
+    fprintf(fid, '- **Sensitivity analysis:** outliers excluded from stats and `*_Sens` figures\n');
+    fprintf(fid, '- **Tables:** `OutlierExcluded`, `OutlierRule`, `CellN` in PerMouse; `Sex_Amplitude_Outliers_Tukey.csv` lists excluded rows\n\n');
     fprintf(fid, '## Sex comparison\n\n');
-    fprintf(fid, '- **Test:** two-sided Mann–Whitney U Female vs Male at each photoperiod\n');
+    fprintf(fid, '- **Primary test:** two-sided Mann–Whitney U Female vs Male at each photoperiod (all clipped values)\n');
+    fprintf(fid, '- **Sensitivity test:** same after Tukey exclusion (separate BH-FDR family)\n');
     fprintf(fid, '- **Gate:** n ≥ %d per sex\n', round(double(cfg.script12.minNPerSex)));
     fprintf(fid, '- **Effect size:** Cliff''s δ with bootstrap 95%% CI (n=%d)\n', ...
         round(double(cfg.script12.bootstrapN)));
-    fprintf(fid, '- **FDR:** Benjamini–Hochberg within each `ClusterID|Metric` (6 photoperiods per cluster per Pre/Post; α = %.3g)\n', ...
+    fprintf(fid, '- **FDR:** Benjamini–Hochberg within each `Analysis|ClusterID|Metric` (6 photoperiods per cluster per Pre/Post; α = %.3g)\n', ...
         double(cfg.script12.alphaFdr));
-    fprintf(fid, '- **Plot:** box-and-whisker F|M side-by-side per photoperiod with jittered points; BH-FDR stars above each pair\n');
+    fprintf(fid, '- **Plot (primary):** box-and-whisker F|M side-by-side; hollow Tukey outliers; BH-FDR stars from primary stats\n');
+    fprintf(fid, '- **Plot (sensitivity):** `*_Sens` suffix — outliers omitted; stars from sensitivity stats\n');
     fprintf(fid, '- **Stars:** * / ** / *** from Q_BH when Significant_BH\n');
-    fprintf(fid, '- **Tables:** `Sex_Amplitude_PerMouse.csv`, `Sex_Amplitude_Stats_BH_FDR.csv` (n and methods live here / README)\n\n');
+    fprintf(fid, '- **Tables:** `Sex_Amplitude_PerMouse.csv`, `Sex_Amplitude_Stats_BH_FDR_Primary.csv`, `Sex_Amplitude_Stats_BH_FDR_Sensitivity.csv`\n\n');
     fprintf(fid, '## Clusters\n\n');
     for i = 1:numel(resolved)
         fprintf(fid, '- %s (W ≈ %.2f h)\n', script12_cluster_face_(resolved(i)), ...

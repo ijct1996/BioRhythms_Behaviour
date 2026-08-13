@@ -745,9 +745,9 @@ function script11_plot_population_by_sex_(outPath, mouseTable, resolved, theme, 
     nC = numel(resolved);
     xLabels = strings(nC, 1);
     yAll = [];
-    dx = 0.30;
+    xLayout = extended_grouped_x_layout(2, 'HalfWidth', 0.22, 'Gap', 0.10);
     sexes = ["Female", "Male"];
-    offsets = [-dx, +dx];
+    offsets = xLayout.offsets;
 
     if ~ismember('Sex', mouseTable.Properties.VariableNames)
         mouseTable.Sex = script11_infer_sex_(string(mouseTable.SignalID));
@@ -755,7 +755,7 @@ function script11_plot_population_by_sex_(outPath, mouseTable, resolved, theme, 
 
     themePop = theme;
     themePop.showCandidatePoints = false;
-    themePop.violinWidth = min(theme.violinWidth, 0.22);
+    themePop.violinWidth = min(theme.violinWidth, xLayout.halfWidth * 2);
 
     for i = 1:nC
         R = resolved(i);

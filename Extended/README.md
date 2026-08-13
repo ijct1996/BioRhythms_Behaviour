@@ -95,7 +95,7 @@ Script 11 is **standalone** — Script 10 does not copy these into `Package_Manu
 
 ## Script 12 sex-stratified profiles
 
-Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C01, UR_3_6 C02, plus **pre– and post–lights-off first-peak amplitude** (F/M boxplots side-by-side per photoperiod; Mann–Whitney + BH-FDR stars above each pair). Pre-LD = anticipatory rise before lights-off; Post-LD = reactive rise after lights-off. **F vs M only** — no pre-vs-post test. FDR corrected separately within each cluster × metric (6 photoperiods each). No coherence / ridge-power panels. Standalone; not in Script 10.
+Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C01, UR_3_6 C02, plus **pre– and post–lights-off first-peak amplitude** (`Value = max(0, peak − baseline)`; F/M boxplots side-by-side per photoperiod; y ≥ 0). **Primary:** Mann–Whitney on all clipped values + hollow Tukey outliers (n>5). **Sensitivity:** `*_Sens` figures/stats with outliers removed. BH-FDR within Analysis×Cluster×Metric. Pre-LD = anticipatory; Post-LD = reactive. **F vs M only** — no pre-vs-post test. Standalone; not in Script 10.
 
 ## Script 10 locked main figures
 
