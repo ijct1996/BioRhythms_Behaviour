@@ -33,6 +33,11 @@
 ### Changed
 - Script 11: KDE violins only when n≥3 points; n<3 shows points + mean/median ticks only
 
+## [Unreleased] — Script 11 sex-split violin spacing
+
+### Fixed
+- `PopulationByCluster_BySex`: F|M violins no longer touch (revert to dx=0.30, violinWidth≤0.22)
+
 ## [Unreleased] — Shared cluster colours (Scripts 9–11) + smooth coherence lines
 
 ### Added

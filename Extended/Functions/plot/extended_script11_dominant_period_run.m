@@ -21,7 +21,7 @@ function out = extended_script11_dominant_period_run(cohortRoot, cfg)
 %     Figures/Supp_DominantPeriod_PopulationByCluster_BySex.*      (F|M boxes per cluster)
 
     SCRIPT_NAME = 'extended_script11_dominant_period_run';
-    SCRIPT_VERSION = '2.4';
+    SCRIPT_VERSION = '2.4.1';
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -745,9 +745,11 @@ function script11_plot_population_by_sex_(outPath, mouseTable, resolved, theme, 
     nC = numel(resolved);
     xLabels = strings(nC, 1);
     yAll = [];
-    xLayout = extended_grouped_x_layout(2, 'HalfWidth', 0.22, 'Gap', 0.10);
+    % F|M centre spacing — must exceed max violin half-width so KDE bodies do not touch.
+    % dx=0.30 + violinWidth≤0.22 → ≥0.16 gap between adjacent edges (reference layout).
+    dx = 0.30;
     sexes = ["Female", "Male"];
-    offsets = xLayout.offsets;
+    offsets = [-dx, dx];
 
     if ~ismember('Sex', mouseTable.Properties.VariableNames)
         mouseTable.Sex = script11_infer_sex_(string(mouseTable.SignalID));
@@ -755,7 +757,7 @@ function script11_plot_population_by_sex_(outPath, mouseTable, resolved, theme, 
 
     themePop = theme;
     themePop.showCandidatePoints = false;
-    themePop.violinWidth = min(theme.violinWidth, xLayout.halfWidth * 2);
+    themePop.violinWidth = min(theme.violinWidth, 0.22);
 
     for i = 1:nC
         R = resolved(i);
