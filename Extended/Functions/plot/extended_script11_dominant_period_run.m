@@ -21,7 +21,7 @@ function out = extended_script11_dominant_period_run(cohortRoot, cfg)
 %     Figures/Supp_DominantPeriod_PopulationByCluster_BySex.*      (F|M boxes per cluster)
 
     SCRIPT_NAME = 'extended_script11_dominant_period_run';
-    SCRIPT_VERSION = '2.3';
+    SCRIPT_VERSION = '2.4';
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -706,7 +706,7 @@ function script11_plot_population_pooled_(outPath, mouseTable, resolved, theme, 
         if isempty(y)
             continue;
         end
-        bandColor = script11_band_color_(pal, R.BandName);
+        bandColor = extended_cluster_colour(pal, 'BandName', R.BandName, 'ClusterRank', R.ClusterRank);
         yExt = script11_draw_violin_(ax, i, y, bandColor, themePop);
         rng(11 + i);
         jitter = (rand(numel(y), 1) - 0.5) * 0.18;
@@ -975,12 +975,8 @@ function sx = script11_infer_sex_(signalID)
 end
 
 function c = script11_band_color_(pal, bandName)
-    bandName = char(string(bandName));
-    if isKey(pal.band, bandName)
-        c = pal.band(bandName);
-    else
-        c = pal.base(1, :);
-    end
+% Legacy wrapper — prefer extended_cluster_colour with ClusterRank when known.
+    c = extended_cluster_colour(pal, 'BandName', bandName, 'ClusterRank', 1);
 end
 
 %% Utilities

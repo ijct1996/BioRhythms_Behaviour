@@ -88,7 +88,7 @@ Read-only after Script 7. Uses locked clusters (UR_1_3 C01, UR_3_6 C01+C02) and 
 | `Tables/DominantPeriod_ByMouse.csv` | Cluster, BandName, Median_h, Median_SD, Mean_h, Mean_SD, SignalID, Sex, N_Candidates |
 | `Tables/DominantPeriod_Output.xlsx` | Same tables + Settings |
 | `Figures/Supp_DominantPeriod_ClusterPeriod_{Band}_C{rank}.*` | Per cluster; stable SignalID order; F/M colours; violins only if n≥6 |
-| `Figures/Supp_DominantPeriod_PopulationByCluster.*` | Pooled population: one violin per cluster when n≥6 (else points + ticks) |
+| `Figures/Supp_DominantPeriod_PopulationByCluster.*` | Pooled population: one violin per cluster (cluster colours match Script 10 twins); n≥6 else points + ticks |
 | `Figures/Supp_DominantPeriod_PopulationByCluster_BySex.*` | F\|M of per-mouse median τ; violins only if n≥6 per sex group |
 
 Script 11 is **standalone** — Script 10 does not copy these into `Package_Manuscript/`.
@@ -112,6 +112,8 @@ Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C
 **Supplemental (Package `Figures/Supp/`, not renumbered mains):**
 - `Supp_Transitions/` — Fig05/07 **LD Pre/Post R** bars (Script 5 BH-FDR ΔR>0 stars; cite `Resync_PrimaryStats_BH_FDR` in text)
 - `Supp/` — UR_3_6 **C02** activity + coherence twins (`cfg.script10.manuscriptClusters`)
+
+**Cluster mean-trace colours (Tol Bright, matched activity↔coherence twins + Script 11 pooled):** UR_1_3 C01 cyan `#66CCEE`; UR_3_6 C01 purple `#AA3377`; UR_3_6 C02 red `#EE6677`. Individual mice = light grey. Coherence mean = smooth line (no markers). Sex green/yellow reserved for F|M panels only.
 
 `Package_Manuscript/` includes Figs **3–7** + Supp + **full supplemental tables** (`Tables/Workbooks`, `Tables/CSV`, index); **excludes** Fig 1 and Fig 2. Same table bundle mirrored under `Script10_*/Tables/Supplemental/`. **Script 11** (dominant UR periods + violins) is a **separate** output folder — not bundled into Script 10.
 

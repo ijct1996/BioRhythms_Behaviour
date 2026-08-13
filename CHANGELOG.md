@@ -33,6 +33,16 @@
 ### Changed
 - Script 11: KDE violins only when n≥3 points; n<3 shows points + mean/median ticks only
 
+## [Unreleased] — Shared cluster colours (Scripts 9–11) + smooth coherence lines
+
+### Added
+- `extended_cluster_colour.m` + `pal.cluster` map (Tol Bright): UR_1_3 C01 cyan, UR_3_6 C01 purple, UR_3_6 C02 red
+
+### Changed
+- Script 10/9 activity mean lines match coherence twin colour per cluster (not fixed blue / LD red)
+- Script 10/9 coherence mean traces: line-only (no markers)
+- Script 11 pooled population violins use cluster colours (sex-split panels unchanged: green/yellow)
+
 ## [Unreleased] — Script 12 v1.8: clip ≥0, Tukey outliers, dual figures/stats
 
 ### Added

@@ -237,11 +237,11 @@ end
 function fig = script9_make_coherence_fig_(data, bandName, clusterID, facets, theme, faceLabel)
     pal = theme.palette;
     yMax = script9_coherence_ymax_(data.phase24, clusterID, facets, pal);
-    bandCol = script9_band_colour_(pal, bandName);
+    clusterCol = extended_cluster_colour(pal, 'ClusterID', clusterID, 'ClusterSummary', data.clusterSummary);
     fig = figure('Color', 'w', 'Visible', 'off', 'Position', [60 60 1600 900]);
     for fi = 1:numel(facets)
         ax = subplot(2, 3, fi); hold(ax, 'on'); set(ax, 'Color', 'w');
-        has = script9_plot_coherence_zt_(ax, data.phase24, clusterID, facets(fi), bandCol, pal, theme, yMax, bandName);
+        has = script9_plot_coherence_zt_(ax, data.phase24, clusterID, facets(fi), clusterCol, pal, theme, yMax, bandName);
         title(ax, char(script9_pp_label_(facets(fi))), 'FontWeight', 'bold', 'Interpreter', 'none');
         if ~has
             text(ax, 0.5, 0.5, sprintf('No coherence for %s', char(script9_pp_label_(facets(fi)))), ...
@@ -264,11 +264,12 @@ end
 
 function fig = script9_make_activity_fig_(data, clusterID, facets, theme, faceLabel)
     pal = theme.palette;
+    clusterCol = extended_cluster_colour(pal, 'ClusterID', clusterID, 'ClusterSummary', data.clusterSummary);
     yLim = script9_activity_ymax_(data.activityZT, clusterID, facets);
     fig = figure('Color', 'w', 'Visible', 'off', 'Position', [60 60 1600 900]);
     for fi = 1:numel(facets)
         ax = subplot(2, 3, fi); hold(ax, 'on'); set(ax, 'Color', 'w');
-        has = script9_plot_activity_zt_(ax, data.activityZT, clusterID, facets(fi), pal, theme, yLim);
+        has = script9_plot_activity_zt_(ax, data.activityZT, clusterID, facets(fi), clusterCol, theme, yLim);
         title(ax, char(script9_pp_label_(facets(fi))), 'FontWeight', 'bold', 'Interpreter', 'none');
         if ~has
             text(ax, 0.5, 0.5, sprintf('No activity for %s', char(script9_pp_label_(facets(fi)))), ...
@@ -313,13 +314,12 @@ function has = script9_plot_coherence_zt_(ax, Phase24, clusterID, photo, lineCol
     end
     G = groupsummary(B, 'ZTBinCenter_h', 'mean', 'R');
     if ismember('mean_R', G.Properties.VariableNames)
-        plot(ax, G.ZTBinCenter_h, G.mean_R, '-o', 'Color', lineCol, 'LineWidth', 2.4, ...
-            'MarkerSize', 4, 'MarkerFaceColor', lineCol);
+        plot(ax, G.ZTBinCenter_h, G.mean_R, '-', 'Color', lineCol, 'LineWidth', 2.4);
     end
     yline(ax, 0, ':', 'Color', [0.5 0.5 0.5], 'HandleVisibility', 'off');
 end
 
-function has = script9_plot_activity_zt_(ax, Act, clusterID, photo, pal, theme, yLim) %#ok<INUSL>
+function has = script9_plot_activity_zt_(ax, Act, clusterID, photo, meanCol, theme, yLim) %#ok<INUSD>
     has = false;
     if isempty(Act) || strlength(string(clusterID)) == 0, return; end
     needed = {'ClusterID', 'Photoperiod_h', 'SignalID', 'ZTBinCenter_h', 'Activity_zscored'};
@@ -358,7 +358,7 @@ function has = script9_plot_activity_zt_(ax, Act, clusterID, photo, pal, theme, 
                 meanY(i) = mean(allY(idx), 'omitnan');
             end
         end
-        plot(ax, centers, meanY, '-', 'Color', pal.ld, 'LineWidth', 2.6);
+        plot(ax, centers, meanY, '-', 'Color', meanCol, 'LineWidth', 2.6);
     end
     yline(ax, 0, ':', 'Color', [0.45 0.45 0.45], 'HandleVisibility', 'off');
 end

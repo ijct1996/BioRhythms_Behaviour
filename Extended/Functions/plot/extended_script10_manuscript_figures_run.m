@@ -568,6 +568,7 @@ function [manifest, widePath, tallPath] = script10_build_activity_figure_(data, 
         clusterId = string(clusterId);
     end
     primaryFace = script10_cluster_face_label_(clusterId, bandName, data.clusterSummary);
+    clusterCol = extended_cluster_colour(pal, 'ClusterID', clusterId, 'ClusterSummary', data.clusterSummary);
     facets = pal.coherenceFacets;
     if isfield(cfg, 'script10') && isfield(cfg.script10, 'activityFacets') && ~isempty(cfg.script10.activityFacets)
         facets = cfg.script10.activityFacets;
@@ -581,7 +582,7 @@ function [manifest, widePath, tallPath] = script10_build_activity_figure_(data, 
     for fi = 1:numel(facets)
         ax = subplot(2, 3, fi); hold(ax, 'on');
         set(ax, 'Color', 'w');
-        hasData = script10_plot_zt_activity_facet_(ax, data.activityZT, clusterId, facets(fi), pal, theme, yMaxAct);
+        hasData = script10_plot_zt_activity_facet_(ax, data.activityZT, clusterId, facets(fi), clusterCol, pal, theme, yMaxAct);
         % Photoperiod title only — no A–F letters; per-panel n in facet helper, union n figure-level
         title(ax, char(script10_pp_label_(facets(fi))), 'FontWeight', 'bold', 'FontSize', 12, 'Interpreter', 'none');
         if ~hasData
@@ -656,11 +657,12 @@ function [manifest, widePath, tallPath, suppPaths] = script10_build_coherence_fi
         clusterId = string(clusterId);
     end
     primaryFace = script10_cluster_face_label_(clusterId, bandName, data.clusterSummary);
+    clusterCol = extended_cluster_colour(pal, 'ClusterID', clusterId, 'ClusterSummary', data.clusterSummary);
     facets = pal.coherenceFacets;
     if isfield(cfg, 'script10') && isfield(cfg.script10, 'coherenceFacets') && ~isempty(cfg.script10.coherenceFacets)
         facets = cfg.script10.coherenceFacets;
     end
-    bandCol = script10_band_colour_(pal, bandName);
+    bandCol = clusterCol;
     yMax = script10_phase24_ymax_(data.phase24, clusterId, facets, pal);
     nMice = script10_cluster_nmice_phase_(data.phase24, clusterId, facets, data.nMice);
 
@@ -704,7 +706,7 @@ function [manifest, widePath, tallPath, suppPaths] = script10_build_coherence_fi
     end
     manifest = script10_manifest_add_(manifest, figId, 'A', standA{1}, 'standalone', ...
         sprintf('24h ZT phase coherence L12–L22 (%s; %s).', bandCaption, primaryFace), ...
-        'Script 7', 'Tol bands', noteA);
+        'Script 7', 'Tol cluster mean', noteA);
 
     widePath = '';
     tallPath = '';
@@ -1249,8 +1251,8 @@ function yLim = script10_activity_zt_ymax_(Act, clusterID, facets)
     yLim = [min(y) - pad, max(y) + pad];
 end
 
-function hasData = script10_plot_zt_activity_facet_(ax, Act, clusterID, photo, pal, theme, yLim)
-    if nargin < 7, yLim = []; end
+function hasData = script10_plot_zt_activity_facet_(ax, Act, clusterID, photo, meanCol, pal, theme, yLim)
+    if nargin < 8, yLim = []; end
     hasData = false;
     if isempty(Act) || strlength(string(clusterID)) == 0, return; end
     needed = {'ClusterID', 'Photoperiod_h', 'SignalID', 'ZTBinCenter_h', 'Activity_zscored'};
@@ -1289,7 +1291,7 @@ function hasData = script10_plot_zt_activity_facet_(ax, Act, clusterID, photo, p
             end
             meanY(i) = mean(vals, 'omitnan');
         end
-        plot(ax, centers, meanY, '-', 'Color', pal.base(1, :), 'LineWidth', 2.6);
+        plot(ax, centers, meanY, '-', 'Color', meanCol, 'LineWidth', 2.6);
         script10_add_panel_n_(ax, numel(mouseZT), theme);
     end
     if ~isempty(yLim)
@@ -1470,12 +1472,18 @@ end
 
 function T = script10_colour_key_table_()
     roles = {
+        'UR 1–3 C01 mean', '#66CCEE', 'Activity + coherence twins; Script 11 pooled violin';
+        'UR 3–6 C01 mean', '#AA3377', 'Activity + coherence twins; Script 11 pooled violin';
+        'UR 3–6 C02 mean', '#EE6677', 'Supp activity + coherence twins; Script 11 pooled violin (cluster mean, not LD transition bar)';
+        'Individual mice', '#B3B3B3', 'Light grey ZT traces (all cluster panels)';
         'LD Pre R', '#BBBBBB', 'Supp LD Pre/Post R bars';
         'LD Post R', '#EE6677', 'Supp LD Pre/Post R bars (Tol LD)';
-        'DL (lights-on)', '#4477AA', 'Legacy / peri-transition traces if present';
+        'DL (lights-on)', '#4477AA', 'Transition traces only (not cluster mean on ZT grids)';
         'LD (lights-off)', '#EE6677', 'Transition colour role';
-        'UR 1–3 h', '#66CCEE', 'Band panels (key UR_1_3)';
-        'UR 3–6 h', '#AA3377', 'Band panels (key UR_3_6)';
+        'Female', '#228833', 'Sex-stratified panels only';
+        'Male', '#CCBB44', 'Sex-stratified panels only';
+        'UR 1–3 h band (legacy)', '#66CCEE', 'Band-level panels (Fig 3, LME forest)';
+        'UR 3–6 h band (legacy)', '#AA3377', 'Band-level panels (Fig 3, LME forest)';
         'CR 20–28 h', '#BBBBBB', 'CR traces';
         'BH-FDR star', 'black *', 'Script 5 LD DeltaR>0 (Supp) or Script 6 (Fig 3C)';
         'Scalograms', 'Jet', 'Fig02 RAW + HSub residual'};
@@ -1828,11 +1836,9 @@ function has = script10_plot_coherence_zt_(ax, Phase24, clusterID, photo, lineCo
     end
     G = groupsummary(B, 'ZTBinCenter_h', 'mean', 'R');
     if ismember('mean_R', G.Properties.VariableNames)
-        plot(ax, G.ZTBinCenter_h, G.mean_R, '-o', 'Color', lineCol, 'LineWidth', 2.4, ...
-            'MarkerSize', 4, 'MarkerFaceColor', lineCol);
+        plot(ax, G.ZTBinCenter_h, G.mean_R, '-', 'Color', lineCol, 'LineWidth', 2.4);
     else
-        plot(ax, B.ZTBinCenter_h, B.R, '-o', 'Color', lineCol, 'LineWidth', 2.4, ...
-            'MarkerSize', 4, 'MarkerFaceColor', lineCol);
+        plot(ax, B.ZTBinCenter_h, B.R, '-', 'Color', lineCol, 'LineWidth', 2.4);
     end
 end
 

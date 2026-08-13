@@ -40,6 +40,17 @@ function pal = extended_tol_bright_palette()
     pal.primaryUR = ["UR_1_3", "UR_3_6"];
     pal.allUR = ["UR_1_3", "UR_3_6", "UR_6_9", "UR_9_12", "UR_12_18"];
 
+    %% Locked manuscript cluster colours (mean traces / pooled violins)
+    %   Distinct within band; sex (green/yellow) reserved for F|M only.
+    pal.cluster = containers.Map();
+    pal.cluster('UR_1_3|1') = pal.base(2, :);   % Cyan  — UR_1_3 C01
+    pal.cluster('UR_3_6|1') = pal.base(6, :);   % Purple — UR_3_6 C01
+    pal.cluster('UR_3_6|2') = pal.base(5, :);   % Red   — UR_3_6 C02 (distinct from cyan/purple)
+    pal.clusterHex = containers.Map();
+    pal.clusterHex('UR_1_3|1') = '#66CCEE';
+    pal.clusterHex('UR_3_6|1') = '#AA3377';
+    pal.clusterHex('UR_3_6|2') = '#EE6677';
+
     pal.coherenceFacets = [12, 14, 16, 18, 20, 22];  % entrained photoperiods only (no LL)
     pal.coherenceYMax = 0.65;
     pal.coherenceXlim = [-6, 6];
