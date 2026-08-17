@@ -21,7 +21,7 @@ function out = extended_script11_dominant_period_run(cohortRoot, cfg)
 %     Figures/Supp_DominantPeriod_PopulationByCluster_BySex.*      (F|M boxes per cluster)
 
     SCRIPT_NAME = 'extended_script11_dominant_period_run';
-    SCRIPT_VERSION = '2.4.1';
+    SCRIPT_VERSION = '2.5';
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -222,7 +222,14 @@ function theme = script11_theme_(cfg, pal)
     theme = struct();
     theme.dpi = cfg.plot.saveDpi;
     theme.ext = cfg.plot.figExt;
-    theme.fontName = pal.fontName;
+    isPub = isfield(cfg, 'plotMode') && strcmpi(string(cfg.plotMode), 'publication');
+    if isPub
+        theme.fontName = 'Arial';
+        theme.stripFigureTitles = true;
+    else
+        theme.fontName = pal.fontName;
+        theme.stripFigureTitles = false;
+    end
     theme.fontSize = 14;
     theme.labelSize = 16;
     theme.titleSize = 17;
@@ -630,7 +637,14 @@ function script11_plot_one_cluster_mice_(outPath, mouseTable, candTable, R, them
     subCand = candTable(string(candTable.ClusterID) == string(R.ClusterID), :);
     subMouse = mouseTable(string(mouseTable.ClusterID) == string(R.ClusterID), :);
     if isempty(subMouse)
-        title(ax, sprintf('%s — no mice', script11_cluster_axis_label_(R)), 'Interpreter', 'none');
+        if ~theme.stripFigureTitles
+            title(ax, sprintf('%s — no mice', script11_cluster_axis_label_(R)), 'Interpreter', 'none');
+        else
+            text(ax, 0.5, 0.5, 'No mice', 'Units', 'normalized', ...
+                'HorizontalAlignment', 'center', 'FontName', theme.fontName, 'Interpreter', 'none');
+        end
+        script11_apply_period_axes_(ax, theme);
+        script11_style_axes_(ax, theme);
         exportgraphics(fig, outPath, 'Resolution', theme.dpi);
         close(fig);
         return;
@@ -645,14 +659,12 @@ function script11_plot_one_cluster_mice_(outPath, mouseTable, candTable, R, them
     subMouse = subMouse(sortIdx, :);
     mice = string(subMouse.SignalID);
 
-    ySeen = [];
     for m = 1:numel(mice)
         y = double(subCand.RawPeriod_h(string(subCand.SignalID) == mice(m)));
         y = y(isfinite(y) & y > 0);
         if isempty(y), continue; end
         faceColor = script11_sex_color_(pal, subMouse.Sex(m));
-        yExt = script11_draw_violin_(ax, m, y, faceColor, theme);
-        ySeen = [ySeen; y(:); yExt(:)]; %#ok<AGROW>
+        script11_draw_violin_(ax, m, y, faceColor, theme);
     end
 
     ax.XLim = [0.4, max(numel(mice), 1) + 0.6];
@@ -661,24 +673,13 @@ function script11_plot_one_cluster_mice_(outPath, mouseTable, candTable, R, them
     xlabel(ax, 'Mouse', 'FontName', theme.fontName, ...
         'FontSize', theme.labelSize, 'FontWeight', 'bold');
 
-    yHi = R.FilterHigh_h;
-    if ~isfinite(yHi)
-        yHi = R.PeriodHigh_h;
+    script11_apply_period_axes_(ax, theme);
+    if ~theme.stripFigureTitles
+        title(ax, sprintf('%s (%.2f–%.2f h)', script11_cluster_axis_label_(R), ...
+            R.PeriodLow_h, R.PeriodHigh_h), ...
+            'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
+            'Interpreter', 'none');
     end
-    if ~isempty(ySeen)
-        yHi = max(yHi, max(ySeen, [], 'omitnan'));
-    end
-    if ~isfinite(yHi) || yHi <= 0
-        yHi = 1;
-    end
-    pad = 0.06 * max(yHi, 0.1);
-    ylim(ax, [0, yHi + pad]);
-    ylabel(ax, 'Period (h)', 'FontName', theme.fontName, ...
-        'FontSize', theme.labelSize, 'FontWeight', 'bold');
-    title(ax, sprintf('%s (%.2f–%.2f h)', script11_cluster_axis_label_(R), ...
-        R.PeriodLow_h, R.PeriodHigh_h), ...
-        'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
-        'Interpreter', 'none');
     script11_style_axes_(ax, theme);
     script11_add_sex_mean_median_legend_(ax, theme, pal);
 
@@ -693,7 +694,6 @@ function script11_plot_population_pooled_(outPath, mouseTable, resolved, theme, 
 
     nC = numel(resolved);
     xLabels = strings(nC, 1);
-    yAll = [];
     themePop = theme;
     themePop.showCandidatePoints = false;
 
@@ -707,28 +707,21 @@ function script11_plot_population_pooled_(outPath, mouseTable, resolved, theme, 
             continue;
         end
         bandColor = extended_cluster_colour(pal, 'BandName', R.BandName, 'ClusterRank', R.ClusterRank);
-        yExt = script11_draw_violin_(ax, i, y, bandColor, themePop);
+        script11_draw_violin_(ax, i, y, bandColor, themePop);
         rng(11 + i);
         jitter = (rand(numel(y), 1) - 0.5) * 0.18;
         scatter(ax, i + jitter, y, 28, ...
             'MarkerFaceColor', bandColor, 'MarkerEdgeColor', bandColor * 0.7, ...
             'MarkerFaceAlpha', 0.55, 'HandleVisibility', 'off');
-        yAll = [yAll; y(:); yExt(:)]; %#ok<AGROW>
     end
 
     set(ax, 'XTick', 1:nC, 'XTickLabel', cellstr(xLabels), 'XLim', [0.4, nC + 0.6]);
     xlabel(ax, 'Cluster', 'FontName', theme.fontName, 'FontSize', theme.labelSize, 'FontWeight', 'bold');
-    ylabel(ax, 'Period (h)', 'FontName', theme.fontName, ...
-        'FontSize', theme.labelSize, 'FontWeight', 'bold');
-    title(ax, 'Population spread of per-mouse median period by cluster', ...
-        'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
-        'Interpreter', 'none');
-    if ~isempty(yAll)
-        yHi = max(yAll, [], 'omitnan');
-        pad = 0.08 * max(yHi, 0.2);
-        ylim(ax, [0, yHi + pad]);
-    else
-        ylim(ax, [0, 1]);
+    script11_apply_period_axes_(ax, theme);
+    if ~theme.stripFigureTitles
+        title(ax, 'Population spread of per-mouse median period by cluster', ...
+            'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
+            'Interpreter', 'none');
     end
     script11_style_axes_(ax, theme);
     script11_add_mean_median_legend_(ax, theme);
@@ -744,7 +737,6 @@ function script11_plot_population_by_sex_(outPath, mouseTable, resolved, theme, 
 
     nC = numel(resolved);
     xLabels = strings(nC, 1);
-    yAll = [];
     % F|M centre spacing — must exceed max violin half-width so KDE bodies do not touch.
     % dx=0.30 + violinWidth≤0.22 → ≥0.16 gap between adjacent edges (reference layout).
     dx = 0.30;
@@ -771,30 +763,23 @@ function script11_plot_population_by_sex_(outPath, mouseTable, resolved, theme, 
             end
             x = i + offsets(si);
             faceColor = script11_sex_color_(pal, sexes(si));
-            yExt = script11_draw_violin_(ax, x, y, faceColor, themePop);
+            script11_draw_violin_(ax, x, y, faceColor, themePop);
             rng(11 + 10 * i + si);
             jitter = (rand(numel(y), 1) - 0.5) * 0.08;
             scatter(ax, x + jitter, y, 28, ...
                 'MarkerFaceColor', faceColor, 'MarkerEdgeColor', faceColor * 0.65, ...
                 'MarkerFaceAlpha', 0.65, 'HandleVisibility', 'off');
-            yAll = [yAll; y(:); yExt(:)]; %#ok<AGROW>
         end
     end
 
     set(ax, 'XTick', 1:nC, 'XTickLabel', cellstr(xLabels), 'XLim', [0.35, nC + 0.65]);
     xlabel(ax, 'Cluster', 'FontName', theme.fontName, ...
         'FontSize', theme.labelSize, 'FontWeight', 'bold');
-    ylabel(ax, 'Candidate period (h)', 'FontName', theme.fontName, ...
-        'FontSize', theme.labelSize, 'FontWeight', 'bold');
-    title(ax, 'Population spread of per-mouse median period by cluster and sex', ...
-        'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
-        'Interpreter', 'none');
-    if ~isempty(yAll)
-        yHi = max(yAll, [], 'omitnan');
-        pad = 0.08 * max(yHi, 0.2);
-        ylim(ax, [0, yHi + pad]);
-    else
-        ylim(ax, [0, 1]);
+    script11_apply_period_axes_(ax, theme);
+    if ~theme.stripFigureTitles
+        title(ax, 'Population spread of per-mouse median period by cluster and sex', ...
+            'FontName', theme.fontName, 'FontSize', theme.titleSize, 'FontWeight', 'bold', ...
+            'Interpreter', 'none');
     end
     script11_style_axes_(ax, theme);
     script11_add_sex_mean_median_legend_(ax, theme, pal);
@@ -809,6 +794,21 @@ function lbl = script11_cluster_axis_label_(R)
     band = regexprep(band, '^UR_', 'UR ');
     band = strrep(band, '_', '-');
     lbl = sprintf('%s C%02d', band, double(R.ClusterRank));
+end
+
+function script11_apply_period_axes_(ax, theme)
+%SCRIPT11_APPLY_PERIOD_AXES_ Fixed ultradian period y-axis for manuscript figures.
+    ylabel(ax, 'Ultradian Period (h)', 'FontName', theme.fontName, ...
+        'FontSize', theme.labelSize, 'FontWeight', 'bold');
+    ylim(ax, [0 6]);
+    script11_close_axis_limits_(ax);
+end
+
+function script11_close_axis_limits_(ax)
+    yt = get(ax, 'YTick');
+    if numel(yt) >= 2 && all(isfinite(yt))
+        ylim(ax, [min(yt), max(yt)]);
+    end
 end
 
 function script11_add_mean_median_legend_(ax, theme)

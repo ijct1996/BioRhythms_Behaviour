@@ -213,7 +213,7 @@ function [manifest, widePath, standPaths] = script10_build_fig01_placeholder_(ou
         'Color', [0.35 0.35 0.35], 'Interpreter', 'none');
 
     base = fullfile(standDir, 'Fig01_Circadian_Placeholder');
-    standPaths = script10_export_figure_(fig, base, theme, {theme.ext, '.pdf'});
+    standPaths = script10_export_figure_(fig, base, theme, {theme.ext});
     widePath = fullfile(outDirs.compositeWide, ['Fig01_Circadian_Placeholder' theme.ext]);
     copyfile(standPaths{1}, widePath, 'f');
     close(fig);
@@ -262,6 +262,9 @@ function [manifest, widePath, tallPath, standPaths] = script10_build_fig02_(data
             'Position', [50 50 max(size(img, 2), 400) max(size(img, 1), 300)]);
         ax = axes(fig); imshow(img, 'Parent', ax); axis(ax, 'off');
         title(ax, panels{i, 3}, 'FontName', theme.fontName, 'FontWeight', 'bold', 'Interpreter', 'none');
+        if theme.stripFigureTitles
+            title(ax, '');
+        end
         script10_panel_label_(ax, panels{i, 2}, theme);
         base = fullfile(standDir, sprintf('Fig02_%s_%s', panels{i, 2}, ...
             regexprep(panels{i, 3}, '[^A-Za-z0-9]+', '_')));
@@ -285,13 +288,14 @@ function [manifest, widePath, tallPath, standPaths] = script10_build_fig02_(data
         end
         set(axE, 'XTick', 1:numel(bn), 'XTickLabel', arrayfun(@(b) script10_band_display_(b, 'tex'), bn, 'UniformOutput', false));
         axE.TickLabelInterpreter = 'tex';
-        ylim(axE, [0 105]);
+        ylim(axE, [0 100]);
     end
-    ylabel(axE, 'Validated retention (% eligible Raw)', 'FontWeight', 'bold');
-    title(axE, 'CarryForward retention by band', 'FontWeight', 'bold');
+    ylabel(axE, 'Validated Ultradian Periods (%)', 'FontWeight', 'bold');
+    xlabel(axE, 'Ultradian Bands', 'FontWeight', 'bold');
     script10_style_axes_(axE, theme);
+    script10_close_axis_limits_(axE);
     script10_panel_label_(axE, 'E', theme);
-    standPaths{5} = script10_export_figure_(figE, fullfile(standDir, 'Fig02_E_Retention'), theme, {theme.ext, '.pdf'});
+    standPaths{5} = script10_export_figure_(figE, fullfile(standDir, 'Fig02_E_Retention'), theme, {theme.ext});
     close(figE);
     manifest = script10_manifest_add_(manifest, 'Fig02', 'E', standPaths{5}{1}, 'standalone', ...
         'CarryForward retention by band (QC)', 'Script 4', 'Tol bands', 'Optional QC panel.');
@@ -343,13 +347,14 @@ function [manifest, widePath, tallPath] = script10_build_fig03_(data, outDirs, t
     %% A — Absolute power CR + primary URs
     figA = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 620 480]);
     axA = axes(figA); hold(axA, 'on');
+    yAllA = [];
     cr = data.absSummary(string(data.absSummary.BandName) == "CR_20_28" & string(data.absSummary.Phase) == "All", :);
     cr = sortrows(cr, 'Photoperiod_h');
     if ~isempty(cr)
         crErr = cr.SD_Log10 ./ sqrt(max(data.nMice, 1));
         errorbar(axA, 1:height(cr), cr.Mean_Log10, crErr, '-s', 'Color', pal.cr, 'LineWidth', 1.5, ...
             'MarkerFaceColor', pal.cr, 'CapSize', 6);
-        script10_direct_line_label_(axA, height(cr), cr.Mean_Log10(end), script10_band_display_('CR_20_28', 'tex'), pal.cr, theme, true);
+        yAllA = [yAllA; double(cr.Mean_Log10 - crErr); double(cr.Mean_Log10 + crErr)]; %#ok<AGROW>
     end
     for b = 1:numel(data.primaryUR)
         bn = data.primaryUR(b);
@@ -360,16 +365,16 @@ function [manifest, widePath, tallPath] = script10_build_fig03_(data, outDirs, t
         urErr = ur.SD_Log10 ./ sqrt(max(data.nMice, 1));
         errorbar(axA, 1:height(ur), ur.Mean_Log10, urErr, '-o', 'Color', col, 'LineWidth', 2, ...
             'MarkerFaceColor', col, 'CapSize', 8);
-        script10_direct_line_label_(axA, height(ur), ur.Mean_Log10(end), script10_band_display_(bn, 'tex'), col, theme, true);
+        yAllA = [yAllA; double(ur.Mean_Log10 - urErr); double(ur.Mean_Log10 + urErr)]; %#ok<AGROW>
     end
     set(axA, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
     xlabel(axA, 'Photoperiod', 'FontWeight', 'bold');
-    ylabel(axA, 'Mean log_{10} band power', 'FontWeight', 'bold');
-    title(axA, 'Absolute power (CR, UR 1–3, UR 3–6)', 'FontWeight', 'bold');
+    ylabel(axA, 'Mean band power (au)', 'FontWeight', 'bold');
+    script10_apply_fig03_abs_ylim_(axA, yAllA);
     script10_style_axes_(axA, theme);
+    script10_close_axis_limits_(axA);
     script10_panel_label_(axA, 'A', theme);
-    script10_add_n_annotation_(axA, data.nMice, theme);
-    standPaths{1} = script10_export_figure_(figA, fullfile(standDir, 'Fig03_A_AbsPower'), theme, {theme.ext, '.pdf'});
+    standPaths{1} = script10_export_figure_(figA, fullfile(standDir, 'Fig03_A_AbsPower'), theme, {theme.ext});
     close(figA);
 
     %% B — Descriptive Delta = UR - CR (both primary bands)
@@ -385,27 +390,24 @@ function [manifest, widePath, tallPath] = script10_build_fig03_(data, outDirs, t
         x = 1:height(sub);
         err = sub.SD_Delta_log10 ./ sqrt(max(data.nMice, 1));
         errorbar(axB, x, y, err, '-o', 'Color', col, 'LineWidth', 2, 'MarkerFaceColor', col, 'CapSize', 8);
-        script10_direct_line_label_(axB, x(end), y(end), script10_band_display_(bn, 'tex'), col, theme, true);
     end
     script10_yline_zero_(axB);
     set(axB, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
     xlabel(axB, 'Photoperiod', 'FontWeight', 'bold');
-    ylabel(axB, '\Delta(UR - CR) log_{10} power', 'FontWeight', 'bold');
-    title(axB, 'Descriptive \Delta = UR − CR (primary bands)', 'FontWeight', 'bold');
+    ylabel(axB, '\Delta (UR - CR) log_{10} power', 'FontWeight', 'bold', 'Interpreter', 'tex');
     script10_style_axes_(axB, theme);
+    script10_close_axis_limits_(axB);
     script10_panel_label_(axB, 'B', theme);
-    script10_add_n_annotation_(axB, data.nMice, theme);
-    standPaths{2} = script10_export_figure_(figB, fullfile(standDir, 'Fig03_B_DeltaDescriptive'), theme, {theme.ext, '.pdf'});
+    standPaths{2} = script10_export_figure_(figB, fullfile(standDir, 'Fig03_B_DeltaDescriptive'), theme, {theme.ext});
     close(figB);
 
     %% C — LME forest (Photoperiod_h beta ± CI); confirmatory co-expression inference
     figC = figure('Color', 'w', 'Visible', 'off', 'Position', [100 100 720 480]);
     axC = axes(figC); hold(axC, 'on');
     script10_plot_lme_forest_(axC, data, theme);
-    title(axC, 'LME Photoperiod_h effects (BH-FDR)', 'FontWeight', 'bold');
     script10_style_axes_(axC, theme);
     script10_panel_label_(axC, 'C', theme);
-    standPaths{3} = script10_export_figure_(figC, fullfile(standDir, 'Fig03_C_LME_Forest'), theme, {theme.ext, '.pdf'});
+    standPaths{3} = script10_export_figure_(figC, fullfile(standDir, 'Fig03_C_LME_Forest'), theme, {theme.ext});
     close(figC);
 
     captions = {
@@ -458,16 +460,21 @@ function script10_plot_lme_forest_(ax, data, theme)
         end
     end
 
-    labels = arrayfun(@(i) sprintf('%s  %s', char(rows.MetricClass(i)), ...
+    labels = arrayfun(@(i) sprintf('%s  %s', script10_lme_metric_label_(rows.MetricClass(i)), ...
         script10_band_display_(rows.BandName(i), 'plain')), (1:n)', 'UniformOutput', false);
     % Ascending ticks with labels flipped to match top-to-bottom row order
     set(ax, 'YTick', 1:n, 'YTickLabel', flipud(labels), 'YLim', [0.4 n + 0.6], ...
-        'TickLabelInterpreter', 'none');
+        'TickLabelInterpreter', 'tex');
     xlabel(ax, 'Photoperiod_h \beta (95% CI)', 'FontWeight', 'bold', 'Interpreter', 'tex');
-    ylabel(ax, '');
-    text(ax, 0.98, 0.02, '* Significant_BH (Script 6 co-expression LME)', 'Units', 'normalized', ...
-        'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', ...
-        'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35], 'Interpreter', 'none');
+    ylabel(ax, 'Variables', 'FontWeight', 'bold', 'Interpreter', 'none');
+end
+
+function lab = script10_lme_metric_label_(metricClass)
+    if string(metricClass) == "Delta"
+        lab = '\Delta';
+    else
+        lab = char(string(metricClass));
+    end
 end
 
 function rows = script10_lme_forest_rows_(data)
@@ -575,34 +582,23 @@ function [manifest, widePath, tallPath] = script10_build_activity_figure_(data, 
     elseif isfield(cfg, 'script10') && isfield(cfg.script10, 'coherenceFacets') && ~isempty(cfg.script10.coherenceFacets)
         facets = cfg.script10.coherenceFacets;
     end
-    yMaxAct = script10_activity_zt_ymax_(data.activityZT, clusterId, facets);
-    nMice = script10_cluster_nmice_(data.activityZT, clusterId, facets, data.nMice);
+    yMaxAct = [-3 3];
+    script10_warn_activity_clip_(data.activityZT, clusterId, facets);
 
     fig = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1600 900]);
     for fi = 1:numel(facets)
         ax = subplot(2, 3, fi); hold(ax, 'on');
         set(ax, 'Color', 'w');
         hasData = script10_plot_zt_activity_facet_(ax, data.activityZT, clusterId, facets(fi), clusterCol, pal, theme, yMaxAct);
-        % Photoperiod title only — no A–F letters; per-panel n in facet helper, union n figure-level
         title(ax, char(script10_pp_label_(facets(fi))), 'FontWeight', 'bold', 'FontSize', 12, 'Interpreter', 'none');
         if ~hasData
             text(ax, 0.5, 0.5, 'No data', ...
                 'Units', 'normalized', 'HorizontalAlignment', 'center', ...
                 'FontName', theme.fontName, 'FontSize', 10, 'Interpreter', 'none');
         end
-        if fi == 1 || fi == 4
-            ylabel(ax, 'Activity (z-scored)', 'FontWeight', 'bold');
-        end
-        if fi >= 4
-            xlabel(ax, 'ZT (h)', 'FontWeight', 'bold');
-        end
-        set(ax, 'XLim', [0 24], 'Color', 'w');
-        script10_style_axes_(ax, theme);
+        script10_apply_pub_zt_panel_(ax, theme, 'activity');
     end
-    sgtitle(fig, sprintf('24 h activity — %s', primaryFace), ...
-        'FontWeight', 'bold', 'FontName', theme.fontName, 'FontSize', 14, 'Interpreter', 'none');
-    script10_add_figure_n_(fig, nMice, theme);
-    standPaths = script10_export_figure_(fig, fullfile(standDir, [compositeStem '_Activity']), theme, {theme.ext, '.pdf'});
+    standPaths = script10_export_figure_(fig, fullfile(standDir, [compositeStem '_Activity']), theme, {theme.ext});
     close(fig);
 
     widePath = '';
@@ -615,7 +611,7 @@ function [manifest, widePath, tallPath] = script10_build_activity_figure_(data, 
     end
 
     bandCaption = script10_band_display_(bandName, 'plain');
-    noteExtra = 'Profile display; panel n + union n across photoperiods.';
+    noteExtra = 'Profile display; per-panel n.';
     if ~writeComposite
         noteExtra = [noteExtra ' Supplemental cluster export (not main Fig).'];
     end
@@ -663,8 +659,7 @@ function [manifest, widePath, tallPath, suppPaths] = script10_build_coherence_fi
         facets = cfg.script10.coherenceFacets;
     end
     bandCol = clusterCol;
-    yMax = script10_phase24_ymax_(data.phase24, clusterId, facets, pal);
-    nMice = script10_cluster_nmice_phase_(data.phase24, clusterId, facets, data.nMice);
+    yMax = 1;
 
     %% A — 24 h ZT phase coherence (main composite = this panel only)
     figA = figure('Color', 'w', 'Visible', 'off', 'Position', [80 80 1600 900]);
@@ -679,24 +674,13 @@ function [manifest, widePath, tallPath, suppPaths] = script10_build_coherence_fi
                 'Units', 'normalized', 'HorizontalAlignment', 'center', ...
                 'FontName', theme.fontName, 'FontSize', 10, 'Interpreter', 'none');
         end
-        if fi == 1 || fi == 4
-            ylabel(axA, 'Phase coherence R', 'FontWeight', 'bold');
-        end
-        if fi >= 4
-            xlabel(axA, 'ZT (h)', 'FontWeight', 'bold');
-        end
-        set(axA, 'YLim', [0 yMax], 'XLim', [0 24], 'Color', 'w');
-        script10_style_axes_(axA, theme);
+        script10_apply_pub_zt_panel_(axA, theme, 'coherence');
     end
-    sgTxt = sprintf('24 h phase coherence — %s', primaryFace);
-    sgtitle(figA, sgTxt, ...
-        'FontWeight', 'bold', 'FontName', theme.fontName, 'FontSize', 14, 'Interpreter', 'none');
-    script10_add_figure_n_(figA, nMice, theme);
-    standA = script10_export_figure_(figA, fullfile(standDir, [compositeStem '_A_CoherenceZT']), theme, {theme.ext, '.pdf'});
+    standA = script10_export_figure_(figA, fullfile(standDir, [compositeStem '_A_CoherenceZT']), theme, {theme.ext});
     close(figA);
 
     bandCaption = script10_band_display_(bandName, 'plain');
-    noteA = 'Descriptive daily profile; panel n + union n across photoperiods.';
+    noteA = 'Descriptive daily profile; per-panel n.';
     if ~writeComposite
         noteA = [noteA ' Supplemental cluster export (not main Fig).'];
     end
@@ -750,7 +734,7 @@ function [manifest, suppPaths] = script10_export_transition_supp_(data, outDirs,
         'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', ...
         'FontName', theme.fontName, 'FontSize', 8, 'Color', [0.35 0.35 0.35], ...
         'Interpreter', 'tex');
-    pathsOut = script10_export_figure_(fig, fullfile(suppDir, stem), theme, {theme.ext, '.pdf'});
+    pathsOut = script10_export_figure_(fig, fullfile(suppDir, stem), theme, {theme.ext});
     close(fig);
     suppPaths(end + 1, 1) = string(fullfile(suppDir, stem)); %#ok<AGROW>
     manifest = script10_manifest_add_(manifest, figId, 'LD_PrePost_R', pathsOut{1}, 'standalone', ...
@@ -1374,8 +1358,15 @@ function theme = script10_theme_(cfg)
         ext = '.png';
     elseif ~startsWith(ext, '.'), ext = ['.' ext];
     end
-    theme = struct('palette', pal, 'fontName', pal.fontName, ...
-        'dpi', round(dpi), 'ext', ext, 'plotMode', string(cfg.plotMode));
+    isPub = strcmpi(string(cfg.plotMode), 'publication');
+    if isPub
+        fontName = 'Arial';
+    else
+        fontName = pal.fontName;
+    end
+    theme = struct('palette', pal, 'fontName', fontName, ...
+        'dpi', round(dpi), 'ext', ext, 'plotMode', string(cfg.plotMode), ...
+        'stripFigureTitles', isPub);
 end
 
 function [outDirs, modeLabel] = script10_make_output_dirs_(cohortRoot, plotMode)
@@ -1665,12 +1656,12 @@ function lbl = script10_band_display_(bandKey, mode)
     if nargin < 2, mode = 'tex'; end
     key = char(string(bandKey));
     switch key
-        case 'UR_1_3', texLbl = 'UR_{1–3}'; plainLbl = 'UR 1–3 h';
-        case 'UR_3_6', texLbl = 'UR_{3–6}'; plainLbl = 'UR 3–6 h';
-        case 'UR_6_9', texLbl = 'UR_{6–9}'; plainLbl = 'UR 6–9 h';
-        case 'UR_9_12', texLbl = 'UR_{9–12}'; plainLbl = 'UR 9–12 h';
-        case 'UR_12_18', texLbl = 'UR_{12–18}'; plainLbl = 'UR 12–18 h';
-        case 'CR_20_28', texLbl = 'CR_{20–28}'; plainLbl = 'CR 20–28 h';
+        case 'UR_1_3', texLbl = 'UR_{1-3}'; plainLbl = 'UR 1-3 h';
+        case 'UR_3_6', texLbl = 'UR_{3-6}'; plainLbl = 'UR 3-6 h';
+        case 'UR_6_9', texLbl = 'UR_{6-9}'; plainLbl = 'UR 6-9 h';
+        case 'UR_9_12', texLbl = 'UR_{9-12}'; plainLbl = 'UR 9-12 h';
+        case 'UR_12_18', texLbl = 'UR_{12-18}'; plainLbl = 'UR 12-18 h';
+        case 'CR_20_28', texLbl = 'CR_{20-28}'; plainLbl = 'CR 20-28 h';
         otherwise, texLbl = strrep(key, '_', '\_'); plainLbl = strrep(key, '_', ' ');
     end
     if strcmpi(mode, 'plain'), lbl = plainLbl; else, lbl = texLbl; end
@@ -1718,8 +1709,8 @@ end
 function script10_add_panel_n_(ax, nMice, theme)
 %SCRIPT10_ADD_PANEL_N_ Per-facet mouse count (cluster members plotted in this panel).
     if ~(isfinite(nMice) && nMice > 0), return; end
-    text(ax, 0.98, 0.98, sprintf('n = %d', round(nMice)), 'Units', 'normalized', ...
-        'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', ...
+    text(ax, 0.02, 0.98, sprintf('n = %d', round(nMice)), 'Units', 'normalized', ...
+        'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', ...
         'FontName', theme.fontName, 'FontSize', 9, 'Color', [0.25 0.25 0.25], ...
         'Interpreter', 'none', 'HandleVisibility', 'off');
 end
@@ -1845,6 +1836,69 @@ end
 
 function script10_yline_zero_(ax)
     yline(ax, 0, ':', 'Color', [0.45 0.45 0.45], 'HandleVisibility', 'off');
+end
+
+function script10_apply_pub_zt_panel_(ax, theme, panelKind)
+%SCRIPT10_APPLY_PUB_ZT_PANEL_ Publication ZT grid axes (all panels labelled; closed limits).
+    set(ax, 'XLim', [0 24], 'XTick', 0:4:24, 'Color', 'w');
+    xlabel(ax, 'Zeitgeber Time (ZT; h)', 'FontWeight', 'bold');
+    switch lower(string(panelKind))
+        case "activity"
+            ylim(ax, [-3 3]);
+            ylabel(ax, 'Activity (z-scored)', 'FontWeight', 'bold');
+        case "coherence"
+            ylim(ax, [0 1]);
+            ylabel(ax, 'Phase coherence R', 'FontWeight', 'bold');
+    end
+    script10_close_axis_limits_(ax);
+    script10_style_axes_(ax, theme);
+end
+
+function script10_warn_activity_clip_(Act, clusterID, facets)
+%SCRIPT10_WARN_ACTIVITY_CLIP_ Log when z-scored activity exceeds fixed [-3, 3] ylim.
+    if isempty(Act) || strlength(string(clusterID)) == 0, return; end
+    if ~all(ismember({'ClusterID', 'Photoperiod_h', 'Activity_zscored'}, Act.Properties.VariableNames))
+        return;
+    end
+    A = Act(string(Act.ClusterID) == string(clusterID) & ismember(Act.Photoperiod_h, facets), :);
+    y = double(A.Activity_zscored);
+    y = y(isfinite(y));
+    if isempty(y), return; end
+    if any(y < -3 | y > 3)
+        warning('extended_script10:ActivityYClip', ...
+            'Activity z-scores for cluster %s exceed [-3, 3] (min=%.2f, max=%.2f); panels clip at fixed ylim.', ...
+            char(string(clusterID)), min(y), max(y));
+    end
+end
+
+function script10_apply_fig03_abs_ylim_(ax, yAll)
+%SCRIPT10_APPLY_FIG03_ABS_YLIM_ Floor y-axis at 0 when all values are non-negative.
+    yAll = double(yAll(isfinite(yAll)));
+    if isempty(yAll)
+        return;
+    end
+    if all(yAll >= 0)
+        yTop = max(yAll);
+        pad = 0.05 * max(yTop, 0.01);
+        ylim(ax, [0, yTop + pad]);
+    else
+        warning('extended_script10:Fig03AbsPower', ...
+            'Absolute power has values < 0 (min=%.3f); y-axis not floored at 0.', min(yAll));
+        pad = 0.05 * max(range(yAll), 0.01);
+        ylim(ax, [min(yAll) - pad, max(yAll) + pad]);
+    end
+end
+
+function script10_close_axis_limits_(ax)
+%SCRIPT10_CLOSE_AXIS_LIMITS_ Snap axis limits to outermost ticks (no padding).
+    xt = get(ax, 'XTick');
+    yt = get(ax, 'YTick');
+    if numel(xt) >= 2 && all(isfinite(xt))
+        xlim(ax, [min(xt), max(xt)]);
+    end
+    if numel(yt) >= 2 && all(isfinite(yt))
+        ylim(ax, [min(yt), max(yt)]);
+    end
 end
 
 function script10_log_(LOG, fmt, varargin)

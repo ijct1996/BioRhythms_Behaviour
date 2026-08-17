@@ -1,5 +1,14 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Script 10/11 publication figure pass
+
+### Changed
+- **Script 10** (`plotMode = 'publication'`): Arial font; JPEG @ 600 DPI only (no dual PDF export)
+- Fig03: titles/line-end tags/n annotations removed; A y-label `Mean band power (au)`; B `\Delta (UR - CR) log10 power`; C y-label `Variables`, `\Delta` tick labels, BH footnote removed (stars kept)
+- Fig02 E: title removed; y `Validated Ultradian Periods (%)` [0–100]; x-label `Ultradian Bands` (tick labels unchanged); scalogram standalones drop MATLAB `title()` in publication mode
+- Activity/coherence grids (Figs 4–7): no `sgtitle`/union n; per-panel `n` top-left; x `Zeitgeber Time (ZT; h)` 0–24 (ticks 0:4:24) on all panels; activity y `[-3, 3]` with clip warning; coherence y `[0, 1]`
+- **Script 11 v2.5**: publication titles stripped; y-label `Ultradian Period (h)`, ylim `[0, 6]`; Arial in publication mode
+
 ## [Unreleased] — Script 11 violins only if n≥6 (v2.2)
 
 ### Changed

@@ -2,7 +2,7 @@
 
 Extended pipeline beside **frozen Core Scripts 1–3**. Reuses Core `Handoff/` outputs; adds ridge validation, transition resync, LME/FDR, phase/profile analyses, and manuscript figure assembly.
 
-**Plot mode:** `development` (96 DPI PNG) by default. Set `cfg.plotMode = 'publication'` before a later publication pass.
+**Plot mode:** `development` (96 DPI PNG) by default. Set `cfg.plotMode = 'publication'` for manuscript export (600 DPI JPEG, Arial, stripped titles on Script 10/11).
 
 **Primary ultradian bands:** `UR_1_3` and `UR_3_6` (co-primary for transition/resync figures).
 
@@ -136,7 +136,7 @@ cfg.plot.generateLegacyFigures = false;  % Script 7 F/G off in dev
 extended_script5_run(extIn, cfg);
 ```
 
-For publication later: `cfg.plotMode = 'publication'; cfg.plot.generateLegacyFigures = true;`
+For publication: `cfg.plotMode = 'publication'; cfg.plot.generateLegacyFigures = true;` — Script 10 exports JPEG @ 600 DPI; Script 11 v2.5 uses `Ultradian Period (h)` y-axis [0–6 h] and drops figure titles.
 
 ## Deprecated wrappers
 
