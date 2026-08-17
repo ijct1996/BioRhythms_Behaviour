@@ -6,7 +6,8 @@
 - **Script 10:** Leftover `script10_save_storyboard_` call removed from the live run path (was still writing `Storyboard_AllFigures.pdf` and failed with Permission denied if the PDF was open/locked). Helper is now a no-op.
 
 ### Changed
-- **Script 10:** Standalone JPEG exports only — no Fig01 placeholder, no Fig02 scalogram composites, no Wide/Tall composites, storyboard, manifest CSV/XLSX, or PDF
+- **Script 10:** Standalone JPEG exports only — no CompositePanels folder; Package mirrors `Standalone/` once (no duplicate `Figures/` copies)
+- **Fig03 A legend:** `CR`, `UR 1-3`, `UR 3-6` (legend display mode)
 - **Fig02:** Retention bar only (`Standalone/Fig02_Retention/Fig02_E_Retention.jpeg`); even bar widths restored (`xlim` without tick snapping)
 - **Fig03 A:** Fixed `ylim [0, 2.2]`; legend top-right (CR, UR_1_3, UR_3_6)
 - **Path resolution:** Scalogram paths optional for Script 10 (Script 8 still validates them)

@@ -75,7 +75,7 @@ run_extended_script12_sex_stratified_profiles(cohort)
 | **7** | F + G | Script 4 handoff | Phase events + profiles (legacy; off in dev by default) |
 | **8** | — | Cohort root | `Script8_PublicationFigures_*` composites |
 | **9** | — | Cohort root | `Script9_SupplementaryFigures_*` (sex, cluster grids) |
-| **10** | — | Cohort root | `Script10_ManuscriptFigures_*` locked Figs 1–7 + `Package_Manuscript/` |
+| **10** | — | Cohort root | `Script10_ManuscriptFigures_*/Standalone` + `Package_Manuscript/` (tables + Standalone mirror) |
 | **11** | — | Cohort root (Script 7 profiles) | `Script11_DominantPeriod_*` mean+median τ + violins |
 | **12** | — | Cohort root (Script 7 profiles) | `Script12_SexStratifiedProfiles_*` F\|M activity + pre/post-LD amplitude |
 
@@ -132,7 +132,7 @@ Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C
 
 **Cluster mean-trace colours (Tol Bright, matched activity↔coherence twins + Script 11 pooled):** UR_1_3 C01 cyan `#66CCEE`; UR_3_6 C01 purple `#AA3377`; UR_3_6 C02 red `#EE6677`. Individual mice = light grey. Coherence mean = smooth line (no markers). Sex green/yellow reserved for F|M panels only.
 
-`Package_Manuscript/` includes Figs **3–7** standalone JPEGs + Supp + **full supplemental tables** (`Tables/Workbooks`, `Tables/CSV`, index); **excludes** Fig 2 retention and scalograms. No manifest/storyboard/composite folders (live run does not write `Storyboard_AllFigures.pdf`). Same table bundle mirrored under `Script10_*/Tables/Supplemental/`. **Script 11** (dominant UR periods + violins) is a **separate** output folder — not bundled into Script 10.
+`Package_Manuscript/` holds a single **Standalone/** mirror plus **Tables/** (no duplicate flat `Figures/` copies). No CompositePanels, manifest, or storyboard. Same table bundle mirrored under `Script10_*/Tables/Supplemental/`. **Script 11** (dominant UR periods + violins) is a **separate** output folder — not bundled into Script 10.
 
 **Do not conflate:** Fig 3C = co-expression LME; Script 5 transition FDR = confirmatory resync (LD Pre/Post R supplemental, not glued onto Figs 5/7). Ridge-power / ΔR gradient figures are not exported.
 

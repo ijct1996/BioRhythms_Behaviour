@@ -8,8 +8,8 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
 %   Fig06 UR_3_6 activity twin of Fig04 (C01)
 %   Fig07 UR_3_6 coherence twin of Fig05 (C01)
 %
-%   Exports standalone JPEGs only (no composites, storyboard, or manifest).
-%   Package_Manuscript/ holds Figs 3–7 standalones + Tables + Figures/Supp/.
+%   Exports standalone JPEGs only (no CompositePanels, storyboard, or manifest).
+%   Script10 output: Standalone/, Logs/, Tables/ (via Package), Package_Manuscript/.
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -70,13 +70,13 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
     mainRank13 = script10_manuscript_main_rank_(cfg, band13);
     cid13 = script10_resolve_manuscript_cluster_(data.clusterSummary, band13, mainRank13, cfg, LOG);
     actPath4 = script10_build_activity_figure_(data, outDirs, theme, cfg, ...
-        'Fig04', band13, 'Fig04_Activity_UR13', cid13, false, '');
+        'Fig04', band13, 'Fig04_Activity_UR13', cid13, '');
     packageFigs(end + 1, 1) = string(actPath4{1}); %#ok<AGROW>
     script10_log_(LOG, 'Fig 04 complete (cluster %s)', char(cid13));
 
     %% Fig05 — UR_1_3 coherence A-only + LD Pre/Post R supp
     [cohPath5, supp5] = script10_build_coherence_figure_(data, outDirs, theme, cfg, ...
-        'Fig05', band13, 'Fig05_Coherence_UR13', cid13, false, true, '');
+        'Fig05', band13, 'Fig05_Coherence_UR13', cid13, true, '');
     packageFigs(end + 1, 1) = string(cohPath5{1}); %#ok<AGROW>
     packageSupp = [packageSupp; supp5(:)]; %#ok<AGROW>
     script10_log_(LOG, 'Fig 05 complete (A-only standalone; LD Pre/Post R → Supp_Transitions)');
@@ -86,13 +86,13 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
     mainRank36 = script10_manuscript_main_rank_(cfg, band36);
     cid36 = script10_resolve_manuscript_cluster_(data.clusterSummary, band36, mainRank36, cfg, LOG);
     actPath6 = script10_build_activity_figure_(data, outDirs, theme, cfg, ...
-        'Fig06', band36, 'Fig06_Activity_UR36', cid36, false, '');
+        'Fig06', band36, 'Fig06_Activity_UR36', cid36, '');
     packageFigs(end + 1, 1) = string(actPath6{1}); %#ok<AGROW>
     script10_log_(LOG, 'Fig 06 complete (cluster %s)', char(cid36));
 
     %% Fig07 — UR_3_6 coherence twin (C01; A-only + LD Pre/Post R supp)
     [cohPath7, supp7] = script10_build_coherence_figure_(data, outDirs, theme, cfg, ...
-        'Fig07', band36, 'Fig07_Coherence_UR36', cid36, false, true, '');
+        'Fig07', band36, 'Fig07_Coherence_UR36', cid36, true, '');
     packageFigs(end + 1, 1) = string(cohPath7{1}); %#ok<AGROW>
     packageSupp = [packageSupp; supp7(:)]; %#ok<AGROW>
     script10_log_(LOG, 'Fig 07 complete (A-only standalone; LD Pre/Post R → Supp_Transitions)');
@@ -110,10 +110,10 @@ function out = extended_script10_manuscript_figures_run(cohortRoot, cfg)
         actStem = sprintf('Supp_Activity_UR36_%s', short);
         cohStem = sprintf('Supp_Coherence_UR36_%s', short);
         actSupp = script10_build_activity_figure_(data, outDirs, theme, cfg, ...
-            'Supp', band36, actStem, cidSupp, false, 'Supp');
+            'Supp', band36, actStem, cidSupp, 'Supp');
         packageSupp(end + 1, 1) = string(actSupp{1}); %#ok<AGROW>
         [cohSupp, ~] = script10_build_coherence_figure_(data, outDirs, theme, cfg, ...
-            'Supp', band36, cohStem, cidSupp, false, false, 'Supp');
+            'Supp', band36, cohStem, cidSupp, false, 'Supp');
         packageSupp(end + 1, 1) = string(cohSupp{1}); %#ok<AGROW>
         script10_log_(LOG, 'Supp UR_3_6 %s activity+coherence exported', short);
     end
@@ -365,14 +365,15 @@ function standPaths = script10_build_fig03_(data, outDirs, theme, cfg) %#ok<INUS
         col = script10_band_colour_(pal, bn);
         urErr = ur.SD_Log10 ./ sqrt(max(data.nMice, 1));
         hUr = errorbar(axA, 1:height(ur), ur.Mean_Log10, urErr, '-o', 'Color', col, 'LineWidth', 2, ...
-            'MarkerFaceColor', col, 'CapSize', 8, 'DisplayName', char(bn));
+            'MarkerFaceColor', col, 'CapSize', 8, 'DisplayName', script10_band_display_(bn, 'legend'));
         legendHandles(end + 1) = hUr; %#ok<AGROW>
-        legendLabels(end + 1) = string(bn); %#ok<AGROW>
+        legendLabels(end + 1) = string(script10_band_display_(bn, 'legend')); %#ok<AGROW>
     end
     set(axA, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
     xlabel(axA, 'Photoperiod', 'FontWeight', 'bold');
     ylabel(axA, 'Mean band power (au)', 'FontWeight', 'bold');
     ylim(axA, [0 2.2]);
+    set(axA, 'YTick', 0:0.2:2.2);
     if ~isempty(legendHandles)
         legend(axA, legendHandles, cellstr(legendLabels), 'Location', 'northeast', 'Box', 'off', ...
             'FontName', theme.fontName, 'Interpreter', 'none');
@@ -457,7 +458,7 @@ function script10_plot_lme_forest_(ax, data, theme)
     set(ax, 'YTick', 1:n, 'YTickLabel', flipud(labels), 'YLim', [0.4 n + 0.6], ...
         'TickLabelInterpreter', 'tex');
     xlabel(ax, 'Photoperiod_h \beta (95% CI)', 'FontWeight', 'bold', 'Interpreter', 'tex');
-    ylabel(ax, 'Variables', 'FontWeight', 'bold', 'Interpreter', 'none');
+    ylabel(ax, 'Outcome', 'FontWeight', 'bold', 'Interpreter', 'none');
 end
 
 function lab = script10_lme_metric_label_(metricClass)
@@ -544,11 +545,10 @@ function [widePath, tallPath] = script10_composite_fig03_(standPaths, outDirs, t
 end
 
 %% Fig04 / Fig06 — Z-scored activity L12–L22 (explicit ClusterID; primary_cluster_ fallback)
-function standPaths = script10_build_activity_figure_(data, outDirs, theme, cfg, figId, bandName, compositeStem, clusterId, writeComposite, standSubdir)
+function standPaths = script10_build_activity_figure_(data, outDirs, theme, cfg, figId, bandName, compositeStem, clusterId, standSubdir)
 %SCRIPT10_BUILD_ACTIVITY_FIGURE_ Activity ZT grid for one cluster (standalone JPEG).
     if nargin < 8, clusterId = ""; end
-    if nargin < 9 || isempty(writeComposite), writeComposite = false; end
-    if nargin < 10 || isempty(standSubdir), standSubdir = ''; end
+    if nargin < 9 || isempty(standSubdir), standSubdir = ''; end
     figId = string(figId); %#ok<NASGU>
     pal = theme.palette;
     if strlength(string(standSubdir)) > 0
@@ -589,22 +589,14 @@ function standPaths = script10_build_activity_figure_(data, outDirs, theme, cfg,
     end
     standPaths = script10_export_figure_(fig, fullfile(standDir, [compositeStem '_Activity']), theme, {theme.ext});
     close(fig);
-
-    if writeComposite
-        widePath = fullfile(outDirs.compositeWide, [compositeStem theme.ext]);
-        copyfile(standPaths{1}, widePath, 'f');
-        tallPath = fullfile(outDirs.compositeTall, [compositeStem theme.ext]);
-        copyfile(standPaths{1}, tallPath, 'f');
-    end
 end
 
 %% Fig05 / Fig07 — 24h ZT coherence (A main) + optional LD Pre/Post R supp (BH-FDR)
-function [standPaths, suppPaths] = script10_build_coherence_figure_(data, outDirs, theme, cfg, figId, bandName, compositeStem, clusterId, writeComposite, exportTransitions, standSubdir)
+function [standPaths, suppPaths] = script10_build_coherence_figure_(data, outDirs, theme, cfg, figId, bandName, compositeStem, clusterId, exportTransitions, standSubdir)
 %SCRIPT10_BUILD_COHERENCE_FIGURE_ Panel A = 24h ZT coherence grid (standalone JPEG).
     if nargin < 8, clusterId = ""; end
-    if nargin < 9 || isempty(writeComposite), writeComposite = false; end
-    if nargin < 10 || isempty(exportTransitions), exportTransitions = true; end
-    if nargin < 11 || isempty(standSubdir), standSubdir = ''; end
+    if nargin < 9 || isempty(exportTransitions), exportTransitions = true; end
+    if nargin < 10 || isempty(standSubdir), standSubdir = ''; end
     figId = string(figId);
     suppPaths = strings(0, 1);
     pal = theme.palette;
@@ -649,13 +641,6 @@ function [standPaths, suppPaths] = script10_build_coherence_figure_(data, outDir
     end
     standPaths = script10_export_figure_(figA, fullfile(standDir, [compositeStem '_A_CoherenceZT']), theme, {theme.ext});
     close(figA);
-
-    if writeComposite
-        widePath = fullfile(outDirs.compositeWide, [compositeStem theme.ext]);
-        copyfile(standPaths{1}, widePath, 'f');
-        tallPath = fullfile(outDirs.compositeTall, [compositeStem theme.ext]);
-        copyfile(standPaths{1}, tallPath, 'f');
-    end
 
     %% LD Pre/Post R — band-level (once per band; Supp_Transitions)
     if exportTransitions
@@ -853,84 +838,23 @@ function [meanPre, meanPost, semPre, semPost, nCand] = script10_ld_prepost_r_mea
     end
 end
 
-%% Package_Manuscript (Figs 3–7 main + Figures/Supp + tables; exclude Fig1 & Fig2)
+%% Package_Manuscript (Tables + Standalone mirror; no duplicate figure copies)
 function pkgRoot = script10_build_package_(paths, outDirs, packageFigs, packageSupp, theme, cfg, LOG) %#ok<INUSD>
-    if nargin < 4 || isempty(packageSupp), packageSupp = strings(0, 1); end
+    if nargin < 4 || isempty(packageSupp), packageSupp = strings(0, 1); end %#ok<NASGU>
     if nargin < 6 || isempty(cfg), cfg = extended_defaults(); end
     pkgRoot = fullfile(outDirs.root, 'Package_Manuscript');
-    figDir = fullfile(pkgRoot, 'Figures');
+    standDest = fullfile(pkgRoot, 'Standalone');
     tabDir = fullfile(pkgRoot, 'Tables');
-    suppDir = fullfile(figDir, 'Supp');
-    extended_period_gate_ensure_dir(figDir);
+    extended_period_gate_ensure_dir(standDest);
     extended_period_gate_ensure_dir(tabDir);
-    extended_period_gate_ensure_dir(suppDir);
 
-    for i = 1:numel(packageFigs)
-        src = char(packageFigs(i));
-        if isfile(src)
-            copyfile(src, fullfile(figDir, basename_(src)), 'f');
-        end
-    end
-
-    % Main standalones for Figs 3–7 (exclude Supp* folders)
     standSrcRoot = outDirs.standalone;
-    standDest = fullfile(figDir, 'Standalone');
     if isfolder(standSrcRoot)
-        d = dir(standSrcRoot);
-        for i = 1:numel(d)
-            if ~d(i).isdir || startsWith(d(i).name, '.'), continue; end
-            nm = d(i).name;
-            if startsWith(nm, 'Supp'), continue; end
-            if startsWith(nm, 'Fig01') || startsWith(nm, 'Fig02'), continue; end
-            if ~(startsWith(nm, 'Fig03') || startsWith(nm, 'Fig04') || startsWith(nm, 'Fig05') || ...
-                    startsWith(nm, 'Fig06') || startsWith(nm, 'Fig07'))
-                continue;
-            end
-            dest = fullfile(standDest, nm);
-            extended_period_gate_ensure_dir(fileparts(dest));
-            copyfile(fullfile(d(i).folder, nm), dest, 'f');
+        if isfolder(standDest)
+            try, rmdir(standDest, 's'); catch, end %#ok<CTCH>
         end
-    end
-
-    % Supplemental figures → Figures/Supp/ (LD Pre/Post R + C02 grids)
-    for i = 1:numel(packageSupp)
-        src = char(packageSupp(i));
-        if isfolder(src)
-            [~, leaf] = fileparts(src);
-            dest = fullfile(suppDir, leaf);
-            extended_period_gate_ensure_dir(fileparts(dest));
-            if isfolder(dest)
-                try, rmdir(dest, 's'); catch, end %#ok<CTCH>
-            end
-            copyfile(src, dest, 'f');
-        elseif isfile(src)
-            copyfile(src, fullfile(suppDir, basename_(src)), 'f');
-        else
-            % Stem folder may hold PNG+PDF siblings — copy matching files from parent
-            parent = fileparts(src);
-            stem = basename_(src);
-            if isfolder(parent)
-                matches = dir(fullfile(parent, [stem '.*']));
-                for mi = 1:numel(matches)
-                    if matches(mi).isdir, continue; end
-                    copyfile(fullfile(matches(mi).folder, matches(mi).name), ...
-                        fullfile(suppDir, matches(mi).name), 'f');
-                end
-                % Also copy whole Supp_Transitions / Supp subtrees once
-            end
-        end
-    end
-    % Ensure full Supp_Transitions and Supp trees are in package
-    for subName = {'Supp_Transitions', 'Supp'}
-        srcTree = fullfile(outDirs.standalone, subName{1});
-        if isfolder(srcTree)
-            destTree = fullfile(suppDir, subName{1});
-            extended_period_gate_ensure_dir(fileparts(destTree));
-            if isfolder(destTree)
-                try, rmdir(destTree, 's'); catch, end %#ok<CTCH>
-            end
-            copyfile(srcTree, destTree, 'f');
-        end
+        extended_period_gate_ensure_dir(fileparts(standDest));
+        copyfile(standSrcRoot, standDest, 'f');
     end
 
     % Supplemental tables (Scripts 4–7 + optional 9/11) → Package + Script10/Tables/Supplemental
@@ -951,10 +875,7 @@ function script10_write_package_readme_(pkgRoot, theme) %#ok<INUSD>
     fprintf(fid, '# Package_Manuscript - Script 10 handoff\n\n');
     fprintf(fid, 'Zip this folder for collaborator / manuscript handoff.\n\n');
     fprintf(fid, '## Included\n\n');
-    fprintf(fid, '- **Figures/** - Fig03-Fig07 standalone JPEGs\n');
-    fprintf(fid, '- **Figures/Supp/** - supplemental panels (not renumbered mains):\n');
-    fprintf(fid, '  - `Supp_Transitions/` - Fig05/07 **LD Pre/Post R** bars (Script 5 BH-FDR stars)\n');
-    fprintf(fid, '  - `Supp/` - UR_3_6 **C02** activity + coherence twins\n');
+    fprintf(fid, '- **Standalone/** - mirror of Script 10 figure JPEGs (single copy; assemble panels externally)\n');
     fprintf(fid, '- **Tables/** - full supplemental export (`Workbooks/`, `CSV/`, `README_SUPPLEMENTAL_TABLES.md`)\n');
     fprintf(fid, '  - Methods/QC (Script 4 CarryForward), co-expression + LME (Script 6),\n');
     fprintf(fid, '    transition resync + LL projected (Script 5), profiles (Script 7),\n');
@@ -973,7 +894,7 @@ function script10_write_package_readme_(pkgRoot, theme) %#ok<INUSD>
     fprintf(fid, '| **Supp LD Pre/Post R (Fig05/07)** | Script 5 BH-FDR DeltaR>0 (LD bars) | **Confirmatory transition resync** (cite tables; panels supplemental) |\n');
     fprintf(fid, '| **Supp UR36 C02** | Script 7 profiles (ClusterRank 2) | Extra cluster face; not main Fig 8/9 |\n\n');
     fprintf(fid, 'Do not conflate Fig 3 LME with Script 5 transition stats.\n');
-    fprintf(fid, 'Main Figs 5/7 are coherence grids only; LD Pre/Post R live under Figures/Supp/Supp_Transitions/.\n');
+    fprintf(fid, 'Main Figs 5/7 are coherence grids only; LD Pre/Post R live under Standalone/Supp_Transitions/.\n');
     fprintf(fid, 'Sex-stratified panels remain Script 9 (supplemental).\n');
     fclose(fid);
 end
@@ -1303,15 +1224,9 @@ function [outDirs, modeLabel] = script10_make_output_dirs_(cohortRoot, plotMode)
     end
     outRoot = fullfile(cohortRoot, ['Script10_ManuscriptFigures_' char(modeLabel)]);
     outDirs = struct('root', outRoot, ...
-        'compositeWide', fullfile(outRoot, 'CompositePanels', 'Wide_16x9'), ...
-        'compositeTall', fullfile(outRoot, 'CompositePanels', 'Tall_4x5'), ...
         'standalone', fullfile(outRoot, 'Standalone'), ...
-        'logs', fullfile(outRoot, 'Logs'), ...
-        'manifest', fullfile(outRoot, 'Manifest.xlsx'), ...
-        'storyboard', fullfile(outRoot, 'Storyboard_AllFigures.pdf'));
+        'logs', fullfile(outRoot, 'Logs'));
     extended_period_gate_ensure_dir(outDirs.root);
-    extended_period_gate_ensure_dir(outDirs.compositeWide);
-    extended_period_gate_ensure_dir(outDirs.compositeTall);
     extended_period_gate_ensure_dir(outDirs.standalone);
     extended_period_gate_ensure_dir(outDirs.logs);
 end
@@ -1565,15 +1480,19 @@ function lbl = script10_band_display_(bandKey, mode)
     if nargin < 2, mode = 'tex'; end
     key = char(string(bandKey));
     switch key
-        case 'UR_1_3', texLbl = 'UR_{1-3}'; plainLbl = 'UR 1-3 h';
-        case 'UR_3_6', texLbl = 'UR_{3-6}'; plainLbl = 'UR 3-6 h';
-        case 'UR_6_9', texLbl = 'UR_{6-9}'; plainLbl = 'UR 6-9 h';
-        case 'UR_9_12', texLbl = 'UR_{9-12}'; plainLbl = 'UR 9-12 h';
-        case 'UR_12_18', texLbl = 'UR_{12-18}'; plainLbl = 'UR 12-18 h';
-        case 'CR_20_28', texLbl = 'CR_{20-28}'; plainLbl = 'CR 20-28 h';
-        otherwise, texLbl = strrep(key, '_', '\_'); plainLbl = strrep(key, '_', ' ');
+        case 'UR_1_3', texLbl = 'UR_{1-3}'; plainLbl = 'UR 1-3 h'; legendLbl = 'UR 1-3';
+        case 'UR_3_6', texLbl = 'UR_{3-6}'; plainLbl = 'UR 3-6 h'; legendLbl = 'UR 3-6';
+        case 'UR_6_9', texLbl = 'UR_{6-9}'; plainLbl = 'UR 6-9 h'; legendLbl = 'UR 6-9';
+        case 'UR_9_12', texLbl = 'UR_{9-12}'; plainLbl = 'UR 9-12 h'; legendLbl = 'UR 9-12';
+        case 'UR_12_18', texLbl = 'UR_{12-18}'; plainLbl = 'UR 12-18 h'; legendLbl = 'UR 12-18';
+        case 'CR_20_28', texLbl = 'CR_{20-28}'; plainLbl = 'CR 20-28 h'; legendLbl = 'CR';
+        otherwise, texLbl = strrep(key, '_', '\_'); plainLbl = strrep(key, '_', ' '); legendLbl = plainLbl;
     end
-    if strcmpi(mode, 'plain'), lbl = plainLbl; else, lbl = texLbl; end
+    switch lower(mode)
+        case 'plain', lbl = plainLbl;
+        case 'legend', lbl = legendLbl;
+        otherwise, lbl = texLbl;
+    end
 end
 
 function rgb = script10_band_colour_(pal, bandName)
