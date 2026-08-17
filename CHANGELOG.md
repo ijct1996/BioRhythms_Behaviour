@@ -1,5 +1,12 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Cohort Supplemental Tables folder
+
+### Added
+- `Extended/Analysis/build_cohort_supplemental_tables.ps1` — consolidates CSV tables into `{cohort}/Supplemental Tables/CSV/` with `FigXX_` / panel prefixes and index README
+- `Extended/README.md` — locked manuscript assembly map (`FigureManifest_plan_3`: 5 main + 3 supplemental figures)
+- `C57_LP/Supplemental Tables/For_Publication/README.md` — manuscript Fig 4–5 / Supp Fig 3 mapping vs pipeline `Fig04–07` prefixes; Supp Fig 3 = Script 11 dominant periods (not LD resync)
+
 ## [Unreleased] — Script 10 slim export + Fig02/03 fixes
 
 ### Fixed

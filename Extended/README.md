@@ -136,6 +136,25 @@ Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C
 
 **Do not conflate:** Fig 3C = co-expression LME; Script 5 transition FDR = confirmatory resync (LD Pre/Post R supplemental, not glued onto Figs 5/7). Ridge-power / ΔR gradient figures are not exported.
 
+### Manuscript assembly map (`FigureManifest_plan_3`)
+
+Script 10 exports **panel-level standalones**; the locked C57_LP deck assembles **5 main + 3 supplemental** figures:
+
+| Slide | Manuscript | Title (deck) | Pipeline / source |
+|-------|------------|--------------|-------------------|
+| 1 | **Fig 1** | Average activity profiles and circadian characteristics across photoperiods | **Collaborator** (provisional) |
+| 2 | **Fig 2** | Multiscale rhythmic architecture of locomotor activity across photoperiods | Script 14 scalograms A–D + Script 10 retention E |
+| 3 | **Fig 3** | Co-expression profiles across lengthening photoperiod conditions | Script 10 `Fig03_*` (A abs power + C LME forest; descriptive Δ B optional) |
+| 4 | **Fig 4** | Activity and phase coherence profiles within UR band 1–3 h | Script 10 `Fig04` + `Fig05` (UR_1_3 C01) |
+| 5 | **Fig 5** | Activity and phase coherence profiles within UR band 3–6 h, first cluster | Script 10 `Fig06` + `Fig07` (UR_3_6 C01) |
+| 6 | **Supp Fig 1** | Representative actograms of female and male populations across photoperiods | **Collaborator** (photoperiod–day map in legend/notes) |
+| 7 | **Supp Fig 2** | Activity and phase coherence within UR band 3–6 h, second cluster | Script 10 `Standalone/Supp/` (UR_3_6 C02) |
+| 8 | **Supp Fig 3** | Dominant period and their distribution across main clusters of interest | **Script 11** (`Script11_DominantPeriod_Publication/`) |
+
+**Both Fig 1 and Supp Fig 1 are collaborator-owned** — distinct figures (population averages vs representative actograms).
+
+Not in `plan_3` (tables / extended supp only): Script 9 sex panels, Script 12 sex amplitude, Script 10 `Supp_Transitions/` LD Pre/Post R bars (Script 5 resync — cite `Fig05-07_Supp_Resync_*` tables in text if claimed). Cohort deck: `{cohort}/FigureManifest_plan_3.pptx`.
+
 ## What Core already covers (do not rerun)
 
 | Core | Extended does **not** duplicate |
