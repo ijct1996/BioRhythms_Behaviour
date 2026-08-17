@@ -131,7 +131,9 @@ function cfg = extended_defaults()
     cfg.script14.sexGroups = ["F", "M"];
     cfg.script14.hsubArm = cfg.hsub.residualArms.SEL_P360;   % Min360
     cfg.script14.hsubArmLabel = 'SEL_P360';
-    cfg.script14.climMode = 'perSignalSexPooled';  % RAW F|M shared; HSub F|M shared; not cross-type
+    cfg.script14.climMode = 'fixed';               % RAW F|M share [0 14]; HSub F|M share [0 10]
+    cfg.script14.climRaw = [0, 14];
+    cfg.script14.climHSub = [0, 10];
     cfg.script14.figureSizePx = [1280, 640];
 
     %% Ridge handoff QC (Script 4)

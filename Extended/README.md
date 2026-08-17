@@ -107,7 +107,7 @@ Read-only from `{cohort}/Handoff/` + HSub TimeSeries (no per-mouse WP_TS re-run)
 | `Figures/HSub_Residual_Stitched_F_{cohort}.*` | SEL_P360 **residual only** (single panel) |
 | `Figures/HSub_Residual_Stitched_M_{cohort}.*` | Male HSub residual |
 
-**Layout:** 1280×640 px, Arial, jet, photoperiod labels **above** heatmap (`L12`…`LL`), no in-image title. **clim:** F+M pooled within RAW; F+M pooled within HSub (not cross-type). Settings logged in `Settings_Script14.csv`.
+**Layout:** 1280×640 px, Arial, jet, photoperiod labels **above** heatmap (`L12`…`LL`), no in-image title. y-axis `Period (h)`. Colorbar labelled **Magnitude**. **clim:** RAW F|M `[0, 14]`; HSub residual F|M `[0, 10]` (not cross-type). Settings logged in `Settings_Script14.csv`.
 
 Script 10 Fig02 can be pointed at Script 14 outputs in a later pass (currently reads Script 3 `03_AcrossPhotoperiod_*/Figures/`).
 

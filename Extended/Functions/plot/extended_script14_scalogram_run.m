@@ -3,8 +3,8 @@ function out = extended_script14_scalogram_run(cohortRoot, cfg)
 %
 %   Recomputes group-mean stitched CWT scalograms from Handoff/ + HSub TimeSeries.
 %   Does not re-run per-mouse WP_TS. Outputs four single-panel JPEG/PNG figures with
-%   identical canvas size, photoperiod labels above the heatmap, and sex-pooled clim
-%   within each signal class (RAW vs HSub residual separate).
+%   identical canvas size, photoperiod labels above the heatmap, and fixed clim
+%   (RAW 0–14; HSub residual 0–10; F|M shared within each signal class).
 %
 %   Outputs: {cohortRoot}/Script14_Scalograms_{Publication|Development}/
 %     RAW_Stitched_F_{cohort}.*
@@ -14,7 +14,7 @@ function out = extended_script14_scalogram_run(cohortRoot, cfg)
 %     Settings_Script14.csv
 
     SCRIPT_NAME = 'extended_script14_scalogram_run';
-    SCRIPT_VERSION = '1.0.0';
+    SCRIPT_VERSION = '1.0.1';
 
     if nargin < 2 || isempty(cfg)
         cfg = extended_defaults();
@@ -100,10 +100,14 @@ function out = extended_script14_scalogram_run(cohortRoot, cfg)
         hsubData(gi).periods_hours = periods_hours;
     end
 
-    climRaw = script14_pooled_clim_(rawData);
-    climHsub = script14_pooled_clim_(hsubData);
-    script14_log_(LOG, 'clim RAW [%g, %g] (sex-pooled)', climRaw(1), climRaw(2));
-    script14_log_(LOG, 'clim HSub residual [%g, %g] (sex-pooled)', climHsub(1), climHsub(2));
+    climRaw = double(cfg.script14.climRaw);
+    climHsub = double(cfg.script14.climHSub);
+    obsRaw = script14_observed_max_(rawData);
+    obsHsub = script14_observed_max_(hsubData);
+    script14_log_(LOG, 'clim RAW [%g, %g] (fixed; observed max=%g)', climRaw(1), climRaw(2), obsRaw);
+    script14_log_(LOG, 'clim HSub residual [%g, %g] (fixed; observed max=%g)', climHsub(1), climHsub(2), obsHsub);
+    script14_warn_clim_clip_(obsRaw, climRaw, 'RAW');
+    script14_warn_clim_clip_(obsHsub, climHsub, 'HSub residual');
 
     %% Export figures
     figPaths = strings(0, 1);
@@ -170,7 +174,13 @@ function cfg = script14_fill_cfg_(cfg)
         s.hsubArmLabel = 'SEL_P360';
     end
     if ~isfield(s, 'climMode') || isempty(s.climMode)
-        s.climMode = 'perSignalSexPooled';
+        s.climMode = 'fixed';
+    end
+    if ~isfield(s, 'climRaw') || isempty(s.climRaw) || numel(s.climRaw) ~= 2
+        s.climRaw = [0, 14];
+    end
+    if ~isfield(s, 'climHSub') || isempty(s.climHSub) || numel(s.climHSub) ~= 2
+        s.climHSub = [0, 10];
     end
     if ~isfield(s, 'figureSizePx') || isempty(s.figureSizePx)
         s.figureSizePx = [1280, 640];
@@ -212,7 +222,7 @@ function [outDirs, modeLabel] = script14_make_output_dirs_(cohortRoot, plotMode)
     extended_period_gate_ensure_dir(outDirs.logs);
 end
 
-function clim = script14_pooled_clim_(dataStruct)
+function mx = script14_observed_max_(dataStruct)
     mx = 0;
     for i = 1:numel(dataStruct)
         v = max(abs(dataStruct(i).wt(:)), [], 'omitnan');
@@ -220,10 +230,15 @@ function clim = script14_pooled_clim_(dataStruct)
             mx = max(mx, v);
         end
     end
-    if mx <= 0 || ~isfinite(mx)
-        mx = 1;
+end
+
+function script14_warn_clim_clip_(obsMax, clim, label)
+    if ~(isfinite(obsMax) && obsMax > clim(2))
+        return;
     end
-    clim = [0, mx];
+    warning('extended_script14:ClimClip', ...
+        '%s |CWT| max (%.3f) exceeds fixed clim [%.3g, %.3g]; values above the bar are clipped.', ...
+        label, obsMax, clim(1), clim(2));
 end
 
 function script14_assert_groups_present_(entries, sexGroups)

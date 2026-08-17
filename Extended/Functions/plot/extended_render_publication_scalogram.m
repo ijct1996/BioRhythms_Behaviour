@@ -23,6 +23,10 @@ function extended_render_publication_scalogram(wt, periods_hours, stitch, outPat
     cb = colorbar(ax);
     cb.FontName = theme.fontName;
     cb.FontSize = 10;
+    cb.Label.String = 'Magnitude';
+    cb.Label.FontName = theme.fontName;
+    cb.Label.FontWeight = 'bold';
+    cb.Label.FontSize = 12;
     caxis(ax, clim);
 
     yLo = min(periods_hours);
@@ -51,7 +55,7 @@ function extended_render_publication_scalogram(wt, periods_hours, stitch, outPat
     hold(ax, 'off');
 
     xlabel(ax, 'Time (days)', 'FontName', theme.fontName, 'FontWeight', 'bold', 'FontSize', 12);
-    ylabel(ax, 'Period (hr)', 'FontName', theme.fontName, 'FontWeight', 'bold', 'FontSize', 12);
+    ylabel(ax, 'Period (h)', 'FontName', theme.fontName, 'FontWeight', 'bold', 'FontSize', 12);
 
     export_figure(fig, outPath, theme, 'isScalogram', true);
     close(fig);

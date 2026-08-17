@@ -3,7 +3,7 @@ function run_extended_script14_scalograms(cohortRoot)
 %
 %   Recomputes sex-split stitched group-mean CWT scalograms from Handoff/ +
 %   HSub TimeSeries (SEL_P360 residual). Four outputs: RAW F|M, HSub residual F|M.
-%   Sex-pooled color limits within RAW and within HSub (not cross-type).
+%   Sex-pooled color limits within RAW ([0, 14]) and HSub ([0, 10]).
 %
 %   run_extended_script14_scalograms()
 %   run_extended_script14_scalograms(cohortRoot)

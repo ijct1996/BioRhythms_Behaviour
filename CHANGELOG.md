@@ -1,5 +1,11 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Script 14 clim + labels (v1.0.1)
+
+### Changed
+- RAW colorbar fixed at `[0, 14]`; HSub residual at `[0, 10]` (F|M shared within each)
+- Colorbar labelled `Magnitude`; y-axis `Period (h)`
+
 ## [Unreleased] — Script 14 publication stitched scalograms (v1.0)
 
 ### Added
