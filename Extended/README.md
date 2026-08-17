@@ -130,7 +130,7 @@ Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C
 - `Supp_Transitions/` — Fig05/07 **LD Pre/Post R** bars (Script 5 BH-FDR ΔR>0 stars; cite `Resync_PrimaryStats_BH_FDR` in text)
 - `Supp/` — UR_3_6 **C02** activity + coherence twins (`cfg.script10.manuscriptClusters`)
 
-**Cluster mean-trace colours (Tol Bright, matched activity↔coherence twins + Script 11 pooled):** UR_1_3 C01 cyan `#66CCEE`; UR_3_6 C01 purple `#AA3377`; UR_3_6 C02 red `#EE6677`. Individual mice = light grey. Coherence mean = smooth line (no markers). Sex green/yellow reserved for F|M panels only.
+**Cluster mean-trace colours (Tol Bright, matched activity↔coherence twins + Script 11 pooled):** UR_1_3 C01 cyan `#66CCEE`; UR_3_6 C01 purple `#AA3377`; UR_3_6 C02 red `#EE6677`. Individual mice = light grey. Coherence mean = smooth line (no markers); **cohort mean = mean of per-mouse R** (Script 7 v2.2+ long-format export). Sex green/yellow reserved for F|M panels only.
 
 `Package_Manuscript/` holds a single **Standalone/** mirror plus **Tables/** (no duplicate flat `Figures/` copies). No CompositePanels, manifest, or storyboard. Same table bundle mirrored under `Script10_*/Tables/Supplemental/`. **Script 11** (dominant UR periods + violins) is a **separate** output folder — not bundled into Script 10.
 

@@ -12,7 +12,7 @@ function out = extended_script7_profiles_run(extHandoffDir, cfg)
     fprintf('Plot mode: %s\n', cfg.plotMode);
 %% ----------------------------- SETTINGS ---------------------------------
 SCRIPT_NAME    = 'extended_script7_profiles_run';
-SCRIPT_VERSION = '2.1';
+SCRIPT_VERSION = '2.2';
 RUN_TIMESTAMP  = string(datetime('now','Format','yyyy-MM-dd HH:mm:ss'));
 
 % Main bands for publication-focused plotting
@@ -238,7 +238,8 @@ safe_writetable(PhaseRelTable, xlsxOut, 'PhaseCoherence_DL_LD');
 fprintf('Plotting 24 h phase coherence profiles...\n');
 [PhaseZTTable, PlotFiles_phaseZT] = plot_zt_phase_coherence(RidgePhaseClustered, ClusterSummary, dirs.PhaseZT, ...
     ZT_BIN_WIDTH_H, MIN_PHASE_POINTS_PER_ZT_BIN, LL_PHOTOPERIOD_VALUE, ...
-    LL_PROJECTED_REFERENCE_PHOTOPERIOD_H, SAVE_DPI, FIG_EXT, FIG_FONT, LOG);
+    LL_PROJECTED_REFERENCE_PHOTOPERIOD_H, SAVE_DPI, FIG_EXT, FIG_FONT, ...
+    INDIVIDUAL_LINE_COLOUR, MEAN_LINE_COLOUR, LOG);
 PlotFiles = [PlotFiles; PlotFiles_phaseZT];
 safe_writetable(PhaseZTTable, xlsxOut, 'PhaseCoherence_24h');
 
@@ -866,11 +867,14 @@ function TL = collect_relative_phase_rows(P, transitionType, transitionZT, preWi
     TL = rows_to_table(rows, hdr);
 end
 
-function [PhaseZTTable, PlotFiles] = plot_zt_phase_coherence(RP, ClusterSummary, figDir, ztBinWidth, minN, llValue, llRefPhoto, dpi, ext, figFont, LOG)
+function [PhaseZTTable, PlotFiles] = plot_zt_phase_coherence(RP, ClusterSummary, figDir, ztBinWidth, minN, llValue, llRefPhoto, dpi, ext, figFont, indivColour, meanColour, LOG)
+%PLOT_ZT_PHASE_COHERENCE 24 h ZT phase-coherence profiles (per-mouse long format).
+%   One row per mouse × ZT bin. Cohort mean for figures is computed at plot time
+%   (mean of per-mouse R), matching ActivityComponent_24h export logic.
     PlotFiles = empty_plotfiles();
     rows = {};
-    hdr = {'ClusterID','ClusterRank','BandName','Photoperiod_h','ZTBinCenter_h','ZTBinStart_h','ZTBinEnd_h', ...
-        'N_PhaseObs','N_Mice','N_Candidates','R','MeanPhase_rad','CircularSD_rad','MeanRidgePeriod_h','MeanRidgePower_log10','PassN'};
+    hdr = {'ClusterID','ClusterRank','BandName','Photoperiod_h','File','SignalID','ZTBinCenter_h','ZTBinStart_h','ZTBinEnd_h', ...
+        'N_PhaseObs','N_Candidates','R','MeanPhase_rad','CircularSD_rad','MeanRidgePeriod_h','MeanRidgePower_log10','PassN'};
 
     edges = 0:ztBinWidth:24;
     centers = edges(1:end-1) + diff(edges)/2;
@@ -884,26 +888,41 @@ function [PhaseZTTable, PlotFiles] = plot_zt_phase_coherence(RP, ClusterSummary,
         P = RP(string(RP.ClusterID) == clusterID & RP.Photoperiod_h == photo, :);
         if height(P) == 0, continue; end
 
-        Rvals = NaN(numel(centers),1);
-        for b = 1:numel(centers)
-            idx = P.ZT_hours >= edges(b) & P.ZT_hours < edges(b+1);
-            if b == numel(centers)
-                idx = P.ZT_hours >= edges(b) & P.ZT_hours <= edges(b+1);
+        sigs = unique(string(P.SignalID), 'stable');
+        sigs = sigs(strlength(sigs) > 0);
+        Y = NaN(numel(sigs), numel(centers));
+
+        for s = 1:numel(sigs)
+            sig = sigs(s);
+            Ps = P(string(P.SignalID) == sig, :);
+            fileStr = robust_first_string(Ps.File);
+
+            for b = 1:numel(centers)
+                idx = Ps.ZT_hours >= edges(b) & Ps.ZT_hours < edges(b+1);
+                if b == numel(centers)
+                    idx = Ps.ZT_hours >= edges(b) & Ps.ZT_hours <= edges(b+1);
+                end
+                theta = Ps.RidgePhase_rad(idx);
+                theta = theta(isfinite(theta));
+                [R, mu, csd] = circ_summary(theta);
+                n = numel(theta);
+                pass = n >= minN;
+                if pass
+                    Y(s, b) = R;
+                end
+                rows(end+1,:) = {clusterID, C.ClusterRank(1), string(C.BandName(1)), photo, fileStr, sig, centers(b), edges(b), edges(b+1), ...
+                    n, count_unique(Ps.CandidateID(idx)), R, mu, csd, ...
+                    mean(Ps.RidgePeriod_h(idx), 'omitnan'), mean(Ps.RidgePower_log10(idx), 'omitnan'), pass}; %#ok<AGROW>
             end
-            theta = P.RidgePhase_rad(idx);
-            theta = theta(isfinite(theta));
-            [R, mu, csd] = circ_summary(theta);
-            n = numel(theta);
-            pass = n >= minN;
-            Rvals(b) = R;
-            rows(end+1,:) = {clusterID, C.ClusterRank(1), string(C.BandName(1)), photo, centers(b), edges(b), edges(b+1), ...
-                n, count_unique(P.SignalID(idx)), count_unique(P.CandidateID(idx)), R, mu, csd, ...
-                mean(P.RidgePeriod_h(idx),'omitnan'), mean(P.RidgePower_log10(idx),'omitnan'), pass}; %#ok<AGROW>
         end
 
         f = figure('Color','w','Position',[100 100 950 520]);
         ax = axes(f); hold(ax,'on');
-        plot(ax, centers, Rvals, '-o', 'LineWidth', 1.8, 'MarkerSize', 4, 'Color', [0.00 0.45 0.74], 'MarkerFaceColor','w');
+        for s = 1:size(Y, 1)
+            plot_background_line(ax, centers, Y(s, :), indivColour);
+        end
+        meanR = mean(Y, 1, 'omitnan');
+        plot(ax, centers, meanR, '-', 'LineWidth', 2.5, 'Color', meanColour);
         add_light_dark_annotations(ax, photo, llValue, llRefPhoto, [0.82 0.82 0.82], [0.72 0.72 0.72], [0.05 0.05 0.05], 0.10);
         xlabel(ax, 'ZT / projected ZT (h)', 'FontWeight','bold');
         ylabel(ax, 'Phase coherence, R', 'FontWeight','bold');
