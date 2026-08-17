@@ -54,11 +54,6 @@ function paths = extended_script8_resolve_paths(cohortRoot)
 
     paths.missing = strings(0, 1);
     req = {
-        'script3Root', paths.script3Root;
-        'scalogramRawF', paths.scalogramRawF;
-        'scalogramRawM', paths.scalogramRawM;
-        'scalogramHSubF', paths.scalogramHSubF;
-        'scalogramHSubM', paths.scalogramHSubM;
         'gateXlsx', paths.gateXlsx;
         'resyncXlsx', paths.resyncXlsx;
         'lmeDescriptiveXlsx', paths.lmeDescriptiveXlsx;

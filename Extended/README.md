@@ -109,7 +109,7 @@ Read-only from `{cohort}/Handoff/` + HSub TimeSeries (no per-mouse WP_TS re-run)
 
 **Layout:** 1280×640 px, Arial, jet, photoperiod labels **above** heatmap (`L12`…`LL`), no in-image title. y-axis `Period (h)`. Colorbar labelled **Magnitude**. **clim:** RAW F|M `[0, 14]`; HSub residual F|M `[0, 10]` (not cross-type). Settings logged in `Settings_Script14.csv`.
 
-Script 10 Fig02 can be pointed at Script 14 outputs in a later pass (currently reads Script 3 `03_AcrossPhotoperiod_*/Figures/`).
+Script 10 exports the Fig02 **retention bar** standalone; scalograms come from **Script 14** (or external). Script 10 no longer requires Script 3 scalogram JPEGs.
 
 ## Script 12 sex-stratified profiles
 
@@ -119,13 +119,12 @@ Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C
 
 | Fig | Content |
 |-----|---------|
-| 1 | Circadian characteristics — **placeholder** (collaborator external) |
-| 2 | Multiscale RAW + HSub residual **Female\|Male** + CarryForward retention E |
+| 2 | CarryForward **retention bar only** (standalone; scalograms → Script 14) |
 | 3 | Co-expression: A abs power; B descriptive Δ; **C LME forest** (Script 6) |
 | 4 | UR_1_3 Z-scored activity L12–L22 (**C01**) |
-| 5 | UR_1_3 **24h ZT coherence (A only)** on main |
+| 5 | UR_1_3 **24h ZT coherence** (standalone) |
 | 6 | UR_3_6 activity twin of Fig 4 (**C01**) |
-| 7 | UR_3_6 coherence twin of Fig 5 (**A only**) |
+| 7 | UR_3_6 coherence twin of Fig 5 (standalone) |
 
 **Supplemental (Package `Figures/Supp/`, not renumbered mains):**
 - `Supp_Transitions/` — Fig05/07 **LD Pre/Post R** bars (Script 5 BH-FDR ΔR>0 stars; cite `Resync_PrimaryStats_BH_FDR` in text)
@@ -133,7 +132,7 @@ Female | Male side-by-side L12–L22 **activity** grids for UR_1_3 C01, UR_3_6 C
 
 **Cluster mean-trace colours (Tol Bright, matched activity↔coherence twins + Script 11 pooled):** UR_1_3 C01 cyan `#66CCEE`; UR_3_6 C01 purple `#AA3377`; UR_3_6 C02 red `#EE6677`. Individual mice = light grey. Coherence mean = smooth line (no markers). Sex green/yellow reserved for F|M panels only.
 
-`Package_Manuscript/` includes Figs **3–7** + Supp + **full supplemental tables** (`Tables/Workbooks`, `Tables/CSV`, index); **excludes** Fig 1 and Fig 2. Same table bundle mirrored under `Script10_*/Tables/Supplemental/`. **Script 11** (dominant UR periods + violins) is a **separate** output folder — not bundled into Script 10.
+`Package_Manuscript/` includes Figs **3–7** standalone JPEGs + Supp + **full supplemental tables** (`Tables/Workbooks`, `Tables/CSV`, index); **excludes** Fig 2 retention and scalograms. No manifest/storyboard/composite folders (live run does not write `Storyboard_AllFigures.pdf`). Same table bundle mirrored under `Script10_*/Tables/Supplemental/`. **Script 11** (dominant UR periods + violins) is a **separate** output folder — not bundled into Script 10.
 
 **Do not conflate:** Fig 3C = co-expression LME; Script 5 transition FDR = confirmatory resync (LD Pre/Post R supplemental, not glued onto Figs 5/7). Ridge-power / ΔR gradient figures are not exported.
 

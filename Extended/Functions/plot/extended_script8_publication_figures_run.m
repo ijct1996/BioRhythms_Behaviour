@@ -29,6 +29,18 @@ function out = extended_script8_publication_figures_run(cohortRoot, cfg)
         error('extended_script8_publication_figures_run:MissingInputs', ...
             'Missing required inputs: %s', strjoin(paths.missing, ', '));
     end
+    scalReq = {'scalogramRawF', paths.scalogramRawF; 'scalogramRawM', paths.scalogramRawM; ...
+        'scalogramHSubF', paths.scalogramHSubF; 'scalogramHSubM', paths.scalogramHSubM};
+    scalMissing = strings(0, 1);
+    for si = 1:size(scalReq, 1)
+        if isempty(scalReq{si, 2}) || ~isfile(scalReq{si, 2})
+            scalMissing(end + 1, 1) = string(scalReq{si, 1}); %#ok<AGROW>
+        end
+    end
+    if ~isempty(scalMissing)
+        error('extended_script8_publication_figures_run:MissingScalograms', ...
+            'Missing Script 3 scalogram inputs: %s', strjoin(scalMissing, ', '));
+    end
 
     outDirs = script8_make_output_dirs_(cohortRoot, cfg.plotMode);
     logPath = fullfile(outDirs.logs, sprintf('Script8_PublicationFigures_%s.txt', datestr(now, 'yyyymmdd_HHMMSS')));

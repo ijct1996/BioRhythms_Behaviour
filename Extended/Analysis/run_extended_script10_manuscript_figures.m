@@ -1,11 +1,12 @@
 function run_extended_script10_manuscript_figures(cohortRoot)
 %RUN_EXTENDED_SCRIPT10_MANUSCRIPT_FIGURES Extended Script 10 — locked manuscript figures.
 %
-%   Assembles Scripts 5–9 outputs into the locked main figure set (Figs 1–7).
-%   Figs 5 & 7 main composites = 24h ZT coherence (A) only; LD Pre/Post R bars
+%   Assembles Scripts 5–9 outputs into the locked main figure set (Figs 2–7 standalones).
+%   Figs 5 & 7 = 24h ZT coherence (A) only; LD Pre/Post R bars
 %   export under Standalone/Supp_Transitions/ (Script 5 BH-FDR stars).
 %   UR_3_6 C02 activity+coherence twins under Standalone/Supp/ (cfg lock).
 %   Builds Package_Manuscript/ (Figs 3–7 + Figures/Supp + tables; excludes Fig 1 & 2).
+%   No storyboard PDF, manifest, or Wide/Tall composites.
 %
 %   run_extended_script10_manuscript_figures()
 %   run_extended_script10_manuscript_figures(cohortRoot)
@@ -19,7 +20,7 @@ function run_extended_script10_manuscript_figures(cohortRoot)
     cfg = extended_defaults();
     choice = questdlg(sprintf([ ...
         'Select Script 10 plot mode.\n\n' ...
-        'Publication  - 600 DPI JPEG + PDF vectors for line plots.\n' ...
+        'Publication  - 600 DPI JPEG standalones only (no PDF).\n' ...
         'Development  - 96 DPI PNG for quick inspection.\n']), ...
         'Extended Script 10 Mode', ...
         'Publication', 'Development', 'Cancel', 'Publication');
