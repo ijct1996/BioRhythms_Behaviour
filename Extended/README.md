@@ -1,4 +1,4 @@
-# Extended UR — Scripts 4–12
+# Extended UR — Scripts 4–14
 
 Extended pipeline beside **frozen Core Scripts 1–3**. Reuses Core `Handoff/` outputs; adds ridge validation, transition resync, LME/FDR, phase/profile analyses, and manuscript figure assembly.
 
@@ -42,6 +42,9 @@ run_extended_script11_dominant_periods     % pick cohort root (e.g. C57_LP)
 
 % 12 — Female|Male activity + pre/post-LD first-peak amplitude (F vs M BH-FDR; after Script 7)
 run_extended_script12_sex_stratified_profiles  % pick cohort root (e.g. C57_LP)
+
+% 14 — publication stitched scalograms (RAW + HSub residual F|M; replaces Script 3 JPEG layout)
+run_extended_script14_scalograms           % pick cohort root (e.g. C57_LP)
 ```
 
 ### One-liner paths (non-interactive)
@@ -92,6 +95,21 @@ Read-only after Script 7. Uses locked clusters (UR_1_3 C01, UR_3_6 C01+C02) and 
 | `Figures/Supp_DominantPeriod_PopulationByCluster_BySex.*` | F\|M of per-mouse median τ; violins only if n≥6 per sex group |
 
 Script 11 is **standalone** — Script 10 does not copy these into `Package_Manuscript/`.
+
+## Script 14 publication scalograms
+
+Read-only from `{cohort}/Handoff/` + HSub TimeSeries (no per-mouse WP_TS re-run). Recomputes **four** stitched group-mean CWT scalograms:
+
+| Output | Content |
+|--------|---------|
+| `Figures/RAW_Stitched_F_{cohort}.*` | Sex-split RAW average, all photoperiods stitched |
+| `Figures/RAW_Stitched_M_{cohort}.*` | Male RAW |
+| `Figures/HSub_Residual_Stitched_F_{cohort}.*` | SEL_P360 **residual only** (single panel) |
+| `Figures/HSub_Residual_Stitched_M_{cohort}.*` | Male HSub residual |
+
+**Layout:** 1280×640 px, Arial, jet, photoperiod labels **above** heatmap (`L12`…`LL`), no in-image title. **clim:** F+M pooled within RAW; F+M pooled within HSub (not cross-type). Settings logged in `Settings_Script14.csv`.
+
+Script 10 Fig02 can be pointed at Script 14 outputs in a later pass (currently reads Script 3 `03_AcrossPhotoperiod_*/Figures/`).
 
 ## Script 12 sex-stratified profiles
 

@@ -8,7 +8,7 @@ function cfg = extended_defaults()
 
     cfg.version = '1.0-dev';
     cfg.matlabTarget = 'R2025b';
-    cfg.phase = 'Scripts4-12';
+    cfg.phase = 'Scripts4-14';
 
     %% Plot mode — development until user requests publication pass
     cfg.plotMode = 'development';
@@ -40,6 +40,8 @@ function cfg = extended_defaults()
     cfg.scripts(11).entry = 'run_extended_script11_dominant_periods';
     cfg.scripts(12).name = 'Sex-stratified activity + post-LD amplitude (F vs M BH-FDR)';
     cfg.scripts(12).entry = 'run_extended_script12_sex_stratified_profiles';
+    cfg.scripts(14).name = 'Publication stitched scalograms (RAW + HSub residual, F|M)';
+    cfg.scripts(14).entry = 'run_extended_script14_scalograms';
     %% HSub / CarryForward (Script 4 gate)
     cfg.hsub.defaultResidual = 'SEL_P360';
     cfg.hsub.primaryMode = "SEL_P360";
@@ -123,6 +125,14 @@ function cfg = extended_defaults()
     cfg.script12.alphaFdr = 0.05;                 % BH-FDR within ClusterID (F vs M)
     cfg.script12.minNPerSex = 3;                  % minimum n per sex for Mann-Whitney
     cfg.script12.bootstrapN = 2000;               % Cliff's delta 95% CI resamples
+
+    %% Script 14 — publication stitched scalograms (Handoff + HSub TimeSeries)
+    cfg.script14 = struct();
+    cfg.script14.sexGroups = ["F", "M"];
+    cfg.script14.hsubArm = cfg.hsub.residualArms.SEL_P360;   % Min360
+    cfg.script14.hsubArmLabel = 'SEL_P360';
+    cfg.script14.climMode = 'perSignalSexPooled';  % RAW F|M shared; HSub F|M shared; not cross-type
+    cfg.script14.figureSizePx = [1280, 640];
 
     %% Ridge handoff QC (Script 4)
     cfg.ridgeHandoff.minRidgeCoverage = 0.50;

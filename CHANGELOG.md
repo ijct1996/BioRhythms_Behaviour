@@ -1,5 +1,12 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Script 14 publication stitched scalograms (v1.0)
+
+### Added
+- **Script 14:** Recomputes sex-split stitched RAW + HSub SEL_P360 residual scalograms from Handoff/
+- Unified 1280×640 layout, Arial, photoperiod labels above heatmap, sex-pooled clim per signal class
+- Outputs under `Script14_Scalograms_{Publication|Development}/`
+
 ## [Unreleased] — Script 10/11 publication figure pass
 
 ### Changed
