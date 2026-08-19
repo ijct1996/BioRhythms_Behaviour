@@ -371,7 +371,7 @@ function standPaths = script10_build_fig03_(data, outDirs, theme, cfg) %#ok<INUS
     end
     set(axA, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
     xlabel(axA, 'Photoperiod', 'FontWeight', 'bold');
-    ylabel(axA, 'Mean band power (au)', 'FontWeight', 'bold');
+    ylabel(axA, 'Mean log_{10} band power (a.u.)', 'FontWeight', 'bold');
     ylim(axA, [0 2.2]);
     set(axA, 'YTick', 0:0.2:2.2);
     if ~isempty(legendHandles)
@@ -1625,6 +1625,9 @@ function yMax = script10_phase24_ymax_(Phase24, clusterID, photos, pal)
 end
 
 function has = script10_plot_coherence_zt_(ax, Phase24, clusterID, photo, lineCol, pal, theme, yMax, bandName) %#ok<INUSL>
+%SCRIPT10_PLOT_COHERENCE_ZT_ 24 h ZT coherence facet (single mean line).
+%   Supports both per-mouse (v2.2+) and pooled (legacy) PhaseCoherence_24h tables.
+%   Per-mouse data is aggregated to mean-of-mice R; no grey individual traces.
     has = false;
     if isempty(Phase24), return; end
     needed = {'Photoperiod_h', 'ZTBinCenter_h', 'R'};
@@ -1639,26 +1642,27 @@ function has = script10_plot_coherence_zt_(ax, Phase24, clusterID, photo, lineCo
     has = true;
     hold(ax, 'on'); set(ax, 'Color', 'w');
     script10_shade_zt_ld_(ax, double(photo), pal, [0 yMax]);
-    B = sortrows(B, 'ZTBinCenter_h');
+
+    % Filter to bins with usable R (n >= 2 phase obs)
+    if ismember('N_PhaseObs', B.Properties.VariableNames)
+        B = B(double(B.N_PhaseObs) >= 2, :);
+    end
+    if isempty(B), return; end
+
+    % Aggregate to one R per ZT bin (mean of per-mouse R, or pass-through if pooled)
+    G = groupsummary(B, 'ZTBinCenter_h', 'mean', 'R');
+    G = sortrows(G, 'ZTBinCenter_h');
+    plot(ax, G.ZTBinCenter_h, G.mean_R, '-', 'Color', lineCol, 'LineWidth', 2.4);
+
+    % n annotation: unique mice if per-mouse table, else max(N_Mice)
     if ismember('SignalID', B.Properties.VariableNames)
-        sigs = unique(string(B.SignalID), 'stable');
-        for s = 1:numel(sigs)
-            Bs = B(string(B.SignalID) == sigs(s), :);
-            plot(ax, Bs.ZTBinCenter_h, Bs.R, '-', 'Color', [0.75 0.75 0.75], ...
-                'LineWidth', 0.7, 'HandleVisibility', 'off');
-        end
-        script10_add_panel_n_(ax, numel(sigs), theme);
+        nMice = numel(unique(string(B.SignalID)));
+        script10_add_panel_n_(ax, nMice, theme);
     elseif ismember('N_Mice', B.Properties.VariableNames)
         nAgg = max(double(B.N_Mice), [], 'omitnan');
         if isfinite(nAgg) && nAgg > 0
             script10_add_panel_n_(ax, nAgg, theme);
         end
-    end
-    G = groupsummary(B, 'ZTBinCenter_h', 'mean', 'R');
-    if ismember('mean_R', G.Properties.VariableNames)
-        plot(ax, G.ZTBinCenter_h, G.mean_R, '-', 'Color', lineCol, 'LineWidth', 2.4);
-    else
-        plot(ax, B.ZTBinCenter_h, B.R, '-', 'Color', lineCol, 'LineWidth', 2.4);
     end
 end
 

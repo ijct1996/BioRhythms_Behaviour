@@ -1,5 +1,11 @@
 # Changelog: BioRhythms_Behaviour
 
+## [Unreleased] — Coherence per-mouse export + manuscript plots
+
+### Changed
+- **Script 7 (v2.2):** `PhaseCoherence_24h` exports one row per mouse × ZT bin (`File`, `SignalID`, `R`, `PassN`); dev QC figures show grey per-mouse traces + mean of mice
+- **Script 10:** Coherence facets (Figs 5/7, Supp C02) plot single mean line (mean of per-mouse R); no grey individual traces (cleaner for publication); supports both per-mouse and legacy pooled tables
+
 ## [Unreleased] — Cohort Supplemental Tables folder
 
 ### Added
