@@ -371,7 +371,7 @@ function standPaths = script10_build_fig03_(data, outDirs, theme, cfg) %#ok<INUS
     end
     set(axA, 'XTick', 1:numel(pp), 'XTickLabel', ppLabels);
     xlabel(axA, 'Photoperiod', 'FontWeight', 'bold');
-    ylabel(axA, 'Mean band power (au)', 'FontWeight', 'bold');
+    ylabel(axA, 'Mean log_{10} band power (a.u.)', 'FontWeight', 'bold');
     ylim(axA, [0 2.2]);
     set(axA, 'YTick', 0:0.2:2.2);
     if ~isempty(legendHandles)
