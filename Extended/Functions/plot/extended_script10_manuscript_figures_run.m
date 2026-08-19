@@ -1625,7 +1625,9 @@ function yMax = script10_phase24_ymax_(Phase24, clusterID, photos, pal)
 end
 
 function has = script10_plot_coherence_zt_(ax, Phase24, clusterID, photo, lineCol, pal, theme, yMax, bandName) %#ok<INUSL>
-%SCRIPT10_PLOT_COHERENCE_ZT_ 24 h ZT coherence facet (per-mouse grey + cohort mean).
+%SCRIPT10_PLOT_COHERENCE_ZT_ 24 h ZT coherence facet (single mean line).
+%   Supports both per-mouse (v2.2+) and pooled (legacy) PhaseCoherence_24h tables.
+%   Per-mouse data is aggregated to mean-of-mice R; no grey individual traces.
     has = false;
     if isempty(Phase24), return; end
     needed = {'Photoperiod_h', 'ZTBinCenter_h', 'R'};
@@ -1637,59 +1639,31 @@ function has = script10_plot_coherence_zt_(ax, Phase24, clusterID, photo, lineCo
         B = B(string(B.BandName) == string(bandName), :);
     end
     if isempty(B), return; end
-
+    has = true;
     hold(ax, 'on'); set(ax, 'Color', 'w');
     script10_shade_zt_ld_(ax, double(photo), pal, [0 yMax]);
 
-    hasPerMouse = ismember('SignalID', B.Properties.VariableNames) && any(strlength(string(B.SignalID)) > 0);
-    if hasPerMouse
-        B = B(strlength(string(B.SignalID)) > 0, :);
-        if ismember('File', B.Properties.VariableNames)
-            mouseKey = string(B.File) + "|" + string(B.SignalID);
-        else
-            mouseKey = string(B.SignalID);
-        end
-        keys = unique(mouseKey, 'stable');
-        nPlotted = 0;
-        for s = 1:numel(keys)
-            Bs = B(mouseKey == keys(s), :);
-            Bs = sortrows(Bs, 'ZTBinCenter_h');
-            zt = double(Bs.ZTBinCenter_h);
-            r = double(Bs.R);
-            if ismember('PassN', Bs.Properties.VariableNames)
-                keep = zt >= 0 & zt <= 24 & isfinite(r) & logical(Bs.PassN);
-            else
-                keep = zt >= 0 & zt <= 24 & isfinite(r);
-            end
-            if ~any(keep), continue; end
-            plot(ax, zt(keep), r(keep), '-', 'Color', [0.70 0.70 0.70], ...
-                'LineWidth', 0.85, 'HandleVisibility', 'off');
-            nPlotted = nPlotted + 1;
-        end
-        if nPlotted == 0, return; end
-        has = true;
-        Bmean = B;
-        if ismember('PassN', Bmean.Properties.VariableNames)
-            Bmean = Bmean(logical(Bmean.PassN), :);
-        end
-        if isempty(Bmean), return; end
-        G = groupsummary(Bmean, 'ZTBinCenter_h', 'mean', 'R');
-        G = sortrows(G, 'ZTBinCenter_h');
-        plot(ax, G.ZTBinCenter_h, G.mean_R, '-', 'Color', lineCol, 'LineWidth', 2.4);
-        script10_add_panel_n_(ax, nPlotted, theme);
-        return;
+    % Filter to bins with usable R (n >= 2 phase obs)
+    if ismember('N_PhaseObs', B.Properties.VariableNames)
+        B = B(double(B.N_PhaseObs) >= 2, :);
     end
+    if isempty(B), return; end
 
-    % Legacy pooled cohort table (pre-v2.2 Script 7 export)
-    has = true;
-    B = sortrows(B, 'ZTBinCenter_h');
-    if ismember('N_Mice', B.Properties.VariableNames)
+    % Aggregate to one R per ZT bin (mean of per-mouse R, or pass-through if pooled)
+    G = groupsummary(B, 'ZTBinCenter_h', 'mean', 'R');
+    G = sortrows(G, 'ZTBinCenter_h');
+    plot(ax, G.ZTBinCenter_h, G.mean_R, '-', 'Color', lineCol, 'LineWidth', 2.4);
+
+    % n annotation: unique mice if per-mouse table, else max(N_Mice)
+    if ismember('SignalID', B.Properties.VariableNames)
+        nMice = numel(unique(string(B.SignalID)));
+        script10_add_panel_n_(ax, nMice, theme);
+    elseif ismember('N_Mice', B.Properties.VariableNames)
         nAgg = max(double(B.N_Mice), [], 'omitnan');
         if isfinite(nAgg) && nAgg > 0
             script10_add_panel_n_(ax, nAgg, theme);
         end
     end
-    plot(ax, B.ZTBinCenter_h, B.R, '-', 'Color', lineCol, 'LineWidth', 2.4);
 end
 
 function script10_yline_zero_(ax)

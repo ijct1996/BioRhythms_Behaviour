@@ -4,7 +4,7 @@
 
 ### Changed
 - **Script 7 (v2.2):** `PhaseCoherence_24h` exports one row per mouse × ZT bin (`File`, `SignalID`, `R`, `PassN`); dev QC figures show grey per-mouse traces + mean of mice
-- **Script 10:** Coherence facets (Figs 5/7, Supp C02) plot grey per-mouse R + cluster-coloured mean (mean of per-mouse R at each ZT bin); legacy pooled-only tables still supported
+- **Script 10:** Coherence facets (Figs 5/7, Supp C02) plot single mean line (mean of per-mouse R); no grey individual traces (cleaner for publication); supports both per-mouse and legacy pooled tables
 
 ## [Unreleased] — Cohort Supplemental Tables folder
 

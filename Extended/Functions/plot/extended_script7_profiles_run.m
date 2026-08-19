@@ -907,7 +907,7 @@ function [PhaseZTTable, PlotFiles] = plot_zt_phase_coherence(RP, ClusterSummary,
                 [R, mu, csd] = circ_summary(theta);
                 n = numel(theta);
                 pass = n >= minN;
-                if pass
+                if n >= 2
                     Y(s, b) = R;
                 end
                 rows(end+1,:) = {clusterID, C.ClusterRank(1), string(C.BandName(1)), photo, fileStr, sig, centers(b), edges(b), edges(b+1), ...
